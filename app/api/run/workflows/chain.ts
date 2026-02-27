@@ -13,10 +13,18 @@
  * If no steps are configured, falls back to two steps: Draft → Polish.
  */
 import { generateText } from "ai";
+import { z } from "zod";
 import { getModel, parseConfig, writeStep, type WorkflowContext, type WorkflowResult } from "./types";
 
 type ChainStep = { name: string; systemPrompt: string };
-type ChainConfig = { steps: ChainStep[] };
+type ChainConfig = { steps?: ChainStep[] };
+const chainStepSchema = z.object({
+  name: z.string().min(1),
+  systemPrompt: z.string().min(1),
+});
+const chainConfigSchema = z.object({
+  steps: z.array(chainStepSchema).optional(),
+});
 
 const DEFAULT_STEPS: ChainStep[] = [
   { name: "Draft", systemPrompt: "You are a helpful assistant. Respond to the user's request." },
@@ -24,8 +32,10 @@ const DEFAULT_STEPS: ChainStep[] = [
 ];
 
 export async function runChain(ctx: WorkflowContext): Promise<WorkflowResult> {
-  const { agent, input, runId, convex, startedAt } = ctx;
-  const config = parseConfig<ChainConfig>(agent.workflowConfig, { steps: DEFAULT_STEPS });
+  const { agent, input, runId, convex } = ctx;
+  const config = parseConfig<ChainConfig>(agent.workflowConfig, chainConfigSchema, {
+    steps: DEFAULT_STEPS,
+  });
   const steps = config.steps?.length ? config.steps : DEFAULT_STEPS;
   const model = getModel(agent.model);
 

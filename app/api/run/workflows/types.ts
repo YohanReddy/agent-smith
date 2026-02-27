@@ -1,6 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { ConvexHttpClient } from "convex/browser";
+import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -60,11 +61,23 @@ export async function writeStep(convex: ConvexHttpClient, params: StepParams) {
   await convex.mutation(api.runs.addStep, params);
 }
 
-export function parseConfig<T>(raw: string | null | undefined, fallback: T): T {
-  if (!raw) return fallback;
+export function parseConfig<T>(
+  raw: string | null | undefined,
+  schema: z.ZodType<T>,
+  fallback: T,
+): T {
+  if (!raw?.trim()) return fallback;
+
+  let parsed: unknown;
   try {
-    return JSON.parse(raw) as T;
+    parsed = JSON.parse(raw);
   } catch {
-    return fallback;
+    throw new Error("Invalid workflow config JSON");
   }
+
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`Invalid workflow config: ${result.error.issues[0]?.message ?? "schema mismatch"}`);
+  }
+  return result.data;
 }

@@ -13,10 +13,19 @@
  * }
  */
 import { generateText } from "ai";
+import { z } from "zod";
 import { getModel, parseConfig, writeStep, type WorkflowContext, type WorkflowResult } from "./types";
 
 type Worker = { name: string; systemPrompt: string };
-type ParallelConfig = { workers: Worker[]; synthesize?: string };
+type ParallelConfig = { workers?: Worker[]; synthesize?: string };
+const workerSchema = z.object({
+  name: z.string().min(1),
+  systemPrompt: z.string().min(1),
+});
+const parallelConfigSchema = z.object({
+  workers: z.array(workerSchema).optional(),
+  synthesize: z.string().optional(),
+});
 
 const DEFAULT_WORKERS: Worker[] = [
   { name: "Analyst A", systemPrompt: "You are a thorough analyst. Provide a detailed analysis." },
@@ -25,7 +34,9 @@ const DEFAULT_WORKERS: Worker[] = [
 
 export async function runParallel(ctx: WorkflowContext): Promise<WorkflowResult> {
   const { agent, input, runId, convex } = ctx;
-  const config = parseConfig<ParallelConfig>(agent.workflowConfig, { workers: DEFAULT_WORKERS });
+  const config = parseConfig<ParallelConfig>(agent.workflowConfig, parallelConfigSchema, {
+    workers: DEFAULT_WORKERS,
+  });
   const workers = config.workers?.length ? config.workers : DEFAULT_WORKERS;
   const synthesizerPrompt =
     config.synthesize ??

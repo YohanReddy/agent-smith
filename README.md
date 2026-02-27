@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agent Smith
 
-## Getting Started
+Agent Smith is an AI agent workbench built with Next.js, Convex, and AI SDK v6.
 
-First, run the development server:
+You can define agents, run them with different workflow strategies, and inspect every run/step in real time.
 
+## Stack
+
+- Next.js (App Router)
+- Convex (persistence + realtime queries)
+- AI SDK v6 (`ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`)
+- TypeScript + Tailwind CSS
+
+## Local Development
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Start Convex in one terminal:
+```bash
+bunx convex dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Start Next.js in another terminal:
+```bash
+bun run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open `http://localhost:3000`.
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+Required:
+- `NEXT_PUBLIC_CONVEX_URL`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Optional:
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `TAVILY_API_KEY` (enables `web_search` tool)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+- `bun run dev`
+- `bun run build`
+- `bun run start`
+- `bun run lint`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Core Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Agent builder with model, tools, memory mode, and workflow config
+- Standard tool-using agent runs with streaming output
+- Workflow runs: `chain`, `parallel`, `orchestrator`, `evaluator`, `router`
+- Run history and step-by-step trace
+- Memory modes:
+  - `none`
+  - `summary` (compact appended summaries)
+  - `full` (turn history reused in future runs)

@@ -75,23 +75,21 @@ A list of all past runs per agent with:
 A set of built-in tools available to all agents:
 - **web_search** — search the web via a search API
 - **fetch_url** — retrieve page content
-- **run_js** — execute a JS snippet in a sandbox (Bun subprocess)
 - **read_memory** / **write_memory** — access the agent's persisted memory store
-- **http_request** — generic outbound HTTP (GET/POST with headers/body)
 
 Tools are defined using AI SDK's `tool()` helper with Zod schemas. Custom tools can be added as TypeScript files in `/tools` and auto-discovered.
 
 ### 5.5 Memory
 Per-agent memory stored in Convex. Two modes:
 
-**Summary mode** — after each run, an LLM call condenses the run into a short summary appended to the memory store. The memory is injected into the system prompt as `{{memory}}`.
+**Summary mode** — after each run, append a compact summary entry to memory. The memory can be injected into the system prompt as `{{memory}}`.
 
-**Full mode** — raw message history stored and passed in future runs (subject to context window limits).
+**Full mode** — recent user/assistant turns are stored and reused as message history in future runs (subject to context window limits).
 
 Memory can be viewed, edited, and cleared from the agent settings panel.
 
 ### 5.6 Agent Observability (DevTools integration)
-In local dev, wrap the model with AI SDK's `devToolsMiddleware` to capture every LLM call in the DevTools viewer at `localhost:4983`. This gives low-level access to raw request/response payloads, separate from the in-app run console.
+In local dev, optionally wrap model calls with AI SDK `devToolsMiddleware` to inspect raw request/response payloads in the DevTools viewer.
 
 ### 5.7 Subagents (Phase 2)
 Allow an agent's tool to spin up another agent — passing a prompt and getting back a result. Implemented as a `call_agent` tool that triggers a new run in Convex and awaits its completion. Parent runs link to child runs in the run history.
@@ -145,7 +143,7 @@ All UI data access goes through Convex's typed queries and mutations — no addi
 ## 9. Phased Roadmap
 
 **Phase 1 — Core Loop (MVP)**
-Define agents, run them, see step-by-step output, store run history. Memory (summary mode). 4 built-in tools. Local DevTools integration.
+Define agents, run them, see step-by-step output, store run history. Memory (summary mode). 4 built-in tools.
 
 **Phase 2 — Power Features**
 Custom tool authoring in-browser. Full memory mode. Subagents. Run comparison (A/B two agents on same input). Export runs as JSON.

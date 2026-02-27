@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { AVAILABLE_TOOLS } from "@/tools";
+import { AVAILABLE_TOOLS } from "@/tools/registry";
 import type { Id } from "@/convex/_generated/dataModel";
 
 const MODELS = [
@@ -397,7 +397,13 @@ export function AgentBuilder({ editId, onClose }: Props) {
                   min={1}
                   max={50}
                   value={form.maxSteps}
-                  onChange={(e) => setForm({ ...form, maxSteps: Number(e.target.value) })}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value);
+                    const maxSteps = Number.isFinite(parsed)
+                      ? Math.max(1, Math.min(50, Math.floor(parsed)))
+                      : 10;
+                    setForm({ ...form, maxSteps });
+                  }}
                 />
               </Field>
             )}

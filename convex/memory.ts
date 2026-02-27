@@ -32,9 +32,7 @@ export const clear = mutation({
     const existing = await ctx.db
       .query("memory")
       .withIndex("by_agent", (q) => q.eq("agentId", agentId))
-      .first();
-    if (existing) {
-      await ctx.db.delete(existing._id);
-    }
+      .collect();
+    await Promise.all(existing.map((entry) => ctx.db.delete(entry._id)));
   },
 });

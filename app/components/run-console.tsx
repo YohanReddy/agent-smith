@@ -147,7 +147,11 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   // Poll for run completion when using workflow (non-streaming)
   useEffect(() => {
     if (!isRunning) return;
-    if (activeRun?.status === "completed" || activeRun?.status === "failed") {
+    if (
+      activeRun?.status === "completed" ||
+      activeRun?.status === "failed" ||
+      activeRun?.status === "stopped"
+    ) {
       setIsRunning(false);
     }
   }, [activeRun?.status, isRunning]);

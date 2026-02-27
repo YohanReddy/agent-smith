@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamText, stepCountIs } from "ai";
 import { ConvexHttpClient } from "convex/browser";
+import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getEnabledTools } from "@/tools";
@@ -12,36 +13,110 @@ import { runEvaluator } from "./workflows/evaluator";
 import { runRouter } from "./workflows/router";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const requestSchema = z.object({
+  agentId: z.string().min(1),
+  input: z.string().trim().min(1).max(20_000),
+});
+const fullMemoryTurnSchema = z.array(
+  z.object({
+    role: z.union([z.literal("user"), z.literal("assistant")]),
+    content: z.string(),
+  }),
+);
+const FULL_MEMORY_TURN_LIMIT = 40;
+const SUMMARY_MEMORY_MAX_CHARS = 30_000;
+type ConversationTurn = { role: "user" | "assistant"; content: string };
+
+function parseFullMemory(raw: string | undefined): ConversationTurn[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const result = fullMemoryTurnSchema.safeParse(parsed);
+    return result.success ? result.data : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatSummaryMemory(existing: string | undefined, input: string, output: string) {
+  const entry = `[${new Date().toISOString()}]\nInput: ${input.slice(0, 200)}\nOutput: ${output.slice(0, 500)}`;
+  const next = existing ? `${existing}\n\n---\n${entry}` : entry;
+  return next.slice(-SUMMARY_MEMORY_MAX_CHARS);
+}
+
+function formatFullMemory(existing: string | undefined, input: string, output: string) {
+  const turns = parseFullMemory(existing);
+  const nextTurns = [...turns, { role: "user" as const, content: input }, { role: "assistant" as const, content: output }]
+    .slice(-FULL_MEMORY_TURN_LIMIT);
+  return JSON.stringify(nextTurns);
+}
+
+async function persistMemory(
+  agentId: Id<"agents">,
+  mode: "none" | "summary" | "full",
+  input: string,
+  output: string,
+) {
+  if (!output || mode === "none") return;
+  const existing = await convex.query(api.memory.get, { agentId });
+  const content =
+    mode === "full"
+      ? formatFullMemory(existing?.content, input, output)
+      : formatSummaryMemory(existing?.content, input, output);
+  await convex.mutation(api.memory.set, { agentId, content });
+}
+
+function renderFullMemoryForPrompt(raw: string | undefined) {
+  const turns = parseFullMemory(raw);
+  if (!turns.length) return "(no memory yet)";
+  return turns
+    .map((turn) => `${turn.role === "user" ? "User" : "Assistant"}: ${turn.content}`)
+    .join("\n\n");
+}
 
 export async function POST(req: NextRequest) {
-  const { agentId, input } = (await req.json()) as { agentId: string; input: string };
+  const parsedBody = requestSchema.safeParse(await req.json());
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const { agentId, input } = parsedBody.data;
   const startedAt = Date.now();
   let runId: Id<"runs"> | null = null;
 
   try {
-    const agent = await convex.query(api.agents.get, { id: agentId as Id<"agents"> });
+    const typedAgentId = agentId as Id<"agents">;
+    const agent = await convex.query(api.agents.get, { id: typedAgentId });
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    // Resolve {{memory}} in system prompt
+    const workflowType = agent.workflowType ?? "standard";
+    const memoryDoc = await convex.query(api.memory.get, { agentId: typedAgentId });
+    const fullMemoryPrompt = agent.memoryMode === "full"
+      ? renderFullMemoryForPrompt(memoryDoc?.content)
+      : memoryDoc?.content ?? "(no memory yet)";
+
+    // Resolve {{memory}} in system prompt for summary/full modes.
     let systemPrompt = agent.systemPrompt;
     if (agent.memoryMode !== "none" && systemPrompt.includes("{{memory}}")) {
-      const memory = await convex.query(api.memory.get, { agentId: agentId as Id<"agents"> });
-      systemPrompt = systemPrompt.replace("{{memory}}", memory?.content ?? "(no memory yet)");
+      systemPrompt = systemPrompt.replace("{{memory}}", fullMemoryPrompt);
     }
     const agentWithResolvedPrompt = { ...agent, systemPrompt };
 
     runId = await convex.mutation(api.runs.create, {
-      agentId: agentId as Id<"agents">,
+      agentId: typedAgentId,
       agentVersion: agent.latestVersion,
       input,
     });
 
-    const workflowType = agent.workflowType ?? "standard";
-    const ctx = { agent: agentWithResolvedPrompt, input, runId, convex, startedAt };
+    const workflowInput =
+      agent.memoryMode === "full" && memoryDoc?.content
+        ? `Conversation history:\n${renderFullMemoryForPrompt(memoryDoc.content)}\n\nCurrent input:\n${input}`
+        : input;
+    const ctx = { agent: agentWithResolvedPrompt, input: workflowInput, runId, convex, startedAt };
 
-    // Non-standard workflows: run synchronously, return JSON
+    // Non-standard workflows: execute async and return run metadata.
     if (workflowType !== "standard") {
       const runWorkflow = {
         chain: runChain,
@@ -66,16 +141,7 @@ export async function POST(req: NextRequest) {
             durationMs: Date.now() - startedAt,
           });
 
-          if (agent.memoryMode === "summary" && result.output) {
-            const existing = await convex.query(api.memory.get, {
-              agentId: agentId as Id<"agents">,
-            });
-            const entry = `[${new Date().toISOString()}]\nInput: ${input.slice(0, 200)}\nOutput: ${result.output.slice(0, 500)}`;
-            await convex.mutation(api.memory.set, {
-              agentId: agentId as Id<"agents">,
-              content: existing?.content ? `${existing.content}\n\n---\n${entry}` : entry,
-            });
-          }
+          await persistMemory(typedAgentId, agent.memoryMode, input, result.output);
         } catch (err) {
           await convex.mutation(api.runs.fail, {
             id: runId!,
@@ -85,7 +151,7 @@ export async function POST(req: NextRequest) {
         }
       })();
 
-      return NextResponse.json({ runId });
+      return NextResponse.json({ runId }, { headers: { "X-Run-Id": runId } });
     }
 
     // Standard workflow: streamText with tool loop
@@ -96,11 +162,16 @@ export async function POST(req: NextRequest) {
 
     const enabledTools = getEnabledTools(agent.tools, convex, agentId);
     const hasTools = Object.keys(enabledTools).length > 0;
+    const history = agent.memoryMode === "full" ? parseFullMemory(memoryDoc?.content) : [];
+    const messages: Array<{ role: "user" | "assistant"; content: string }> = [
+      ...history.map((turn) => ({ role: turn.role, content: turn.content })),
+      { role: "user", content: input },
+    ];
 
     const result = streamText({
       model: getModel(agent.model),
       system: systemPrompt,
-      messages: [{ role: "user", content: input }],
+      messages,
       ...(hasTools ? { tools: enabledTools } : {}),
       stopWhen: stepCountIs(agent.maxSteps),
       onStepFinish: async ({ text, toolCalls, toolResults, usage, finishReason }) => {
@@ -145,16 +216,7 @@ export async function POST(req: NextRequest) {
           durationMs,
         });
 
-        if (agent.memoryMode === "summary" && text) {
-          const existing = await convex.query(api.memory.get, {
-            agentId: agentId as Id<"agents">,
-          });
-          const entry = `[${new Date().toISOString()}]\nInput: ${input.slice(0, 200)}\nOutput: ${text.slice(0, 500)}`;
-          await convex.mutation(api.memory.set, {
-            agentId: agentId as Id<"agents">,
-            content: existing?.content ? `${existing.content}\n\n---\n${entry}` : entry,
-          });
-        }
+        await persistMemory(typedAgentId, agent.memoryMode, input, text);
       },
     });
 

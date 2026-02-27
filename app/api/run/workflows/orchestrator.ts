@@ -14,6 +14,9 @@ import { z } from "zod";
 import { getModel, parseConfig, writeStep, type WorkflowContext, type WorkflowResult } from "./types";
 
 type OrchestratorConfig = { workerSystemPrompt?: string };
+const orchestratorConfigSchema = z.object({
+  workerSystemPrompt: z.string().optional(),
+});
 
 const planSchema = z.object({
   tasks: z.array(
@@ -28,7 +31,7 @@ const planSchema = z.object({
 
 export async function runOrchestrator(ctx: WorkflowContext): Promise<WorkflowResult> {
   const { agent, input, runId, convex } = ctx;
-  const config = parseConfig<OrchestratorConfig>(agent.workflowConfig, {});
+  const config = parseConfig<OrchestratorConfig>(agent.workflowConfig, orchestratorConfigSchema, {});
   const workerSystemPrompt =
     config.workerSystemPrompt ??
     "You are a skilled specialist. Execute the assigned task and provide a thorough, focused response.";

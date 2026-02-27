@@ -60,6 +60,32 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("agents") },
   handler: async (ctx, { id }) => {
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_agent", (q) => q.eq("agentId", id))
+      .collect();
+
+    for (const run of runs) {
+      const steps = await ctx.db
+        .query("steps")
+        .withIndex("by_run", (q) => q.eq("runId", run._id))
+        .collect();
+      await Promise.all(steps.map((step) => ctx.db.delete(step._id)));
+      await ctx.db.delete(run._id);
+    }
+
+    const versions = await ctx.db
+      .query("agentVersions")
+      .withIndex("by_agent", (q) => q.eq("agentId", id))
+      .collect();
+    await Promise.all(versions.map((version) => ctx.db.delete(version._id)));
+
+    const memory = await ctx.db
+      .query("memory")
+      .withIndex("by_agent", (q) => q.eq("agentId", id))
+      .collect();
+    await Promise.all(memory.map((entry) => ctx.db.delete(entry._id)));
+
     await ctx.db.delete(id);
   },
 });

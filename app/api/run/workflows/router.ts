@@ -17,7 +17,15 @@ import { z } from "zod";
 import { getModel, parseConfig, writeStep, type WorkflowContext, type WorkflowResult } from "./types";
 
 type Route = { type: string; description: string; systemPrompt: string };
-type RouterConfig = { routes: Route[] };
+type RouterConfig = { routes?: Route[] };
+const routeSchema = z.object({
+  type: z.string().min(1),
+  description: z.string().min(1),
+  systemPrompt: z.string().min(1),
+});
+const routerConfigSchema = z.object({
+  routes: z.array(routeSchema).optional(),
+});
 
 const DEFAULT_ROUTES: Route[] = [
   { type: "technical", description: "Technical or analytical questions", systemPrompt: "You are a precise technical expert. Provide detailed, accurate technical responses." },
@@ -27,7 +35,9 @@ const DEFAULT_ROUTES: Route[] = [
 
 export async function runRouter(ctx: WorkflowContext): Promise<WorkflowResult> {
   const { agent, input, runId, convex } = ctx;
-  const config = parseConfig<RouterConfig>(agent.workflowConfig, { routes: DEFAULT_ROUTES });
+  const config = parseConfig<RouterConfig>(agent.workflowConfig, routerConfigSchema, {
+    routes: DEFAULT_ROUTES,
+  });
   const routes = config.routes?.length ? config.routes : DEFAULT_ROUTES;
   const model = getModel(agent.model);
 

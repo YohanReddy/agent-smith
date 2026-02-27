@@ -61,7 +61,7 @@ Schema lives in `convex/schema.ts`. All UI reads go through Convex queries; all 
 - **Convex real-time reactivity**: UI components use `useQuery` so they update automatically as the backend writes new steps. Do not add polling or WebSocket management.
 - **Versioned agents**: Saving an agent always creates a new `agentVersions` record. `runs` reference a specific version, not the mutable `agents` record.
 - **Tool registry**: Built-in tools (`web_search`, `fetch_url`, `read_memory`, `write_memory`) are defined in `tools/index.ts`. Custom tools can be added there and registered in `AVAILABLE_TOOLS`.
-- **Memory injection**: Summary mode — after each run an LLM call condenses it into a short summary appended to the memory store. Full mode — raw message history passed directly. Both are injected as `{{memory}}` in the system prompt.
+- **Memory injection**: Summary mode appends compact run summaries. Full mode stores recent user/assistant turns and reuses them as conversation history on future runs. `{{memory}}` can inject rendered memory into system prompts.
 
 ### UI Principles
 

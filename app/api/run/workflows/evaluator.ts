@@ -27,10 +27,15 @@ const evaluationSchema = z.object({
   issues: z.array(z.string()).describe("Specific problems to fix"),
   improvementDirections: z.array(z.string()).describe("Concrete instructions for improvement"),
 });
+const evaluatorConfigSchema = z.object({
+  maxIterations: z.number().int().min(1).max(10).optional(),
+  passingScore: z.number().min(1).max(10).optional(),
+  evaluatorSystemPrompt: z.string().optional(),
+});
 
 export async function runEvaluator(ctx: WorkflowContext): Promise<WorkflowResult> {
   const { agent, input, runId, convex } = ctx;
-  const config = parseConfig<EvaluatorConfig>(agent.workflowConfig, {});
+  const config = parseConfig<EvaluatorConfig>(agent.workflowConfig, evaluatorConfigSchema, {});
   const maxIterations = config.maxIterations ?? 3;
   const passingScore = config.passingScore ?? 8;
   const evaluatorSystemPrompt =
