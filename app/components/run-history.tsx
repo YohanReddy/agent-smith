@@ -1,0 +1,85 @@
+"use client";
+
+import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+
+interface Props {
+  agentId: Id<"agents">;
+  activeRunId: Id<"runs"> | null;
+  onViewRun: (runId: Id<"runs">) => void;
+}
+
+type RunStatus = "running" | "completed" | "failed" | "stopped";
+
+function StatusIcon({ status }: { status: RunStatus }) {
+  switch (status) {
+    case "completed":
+      return <span className="text-emerald-600">✓</span>;
+    case "failed":
+      return <span className="text-red-600">✗</span>;
+    case "running":
+      return <span className="animate-spin inline-block text-zinc-500 text-[11px]">⟳</span>;
+    case "stopped":
+      return <span className="text-zinc-700">■</span>;
+  }
+}
+
+function fmtMs(ms: number) {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+function fmtTok(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+export function RunHistory({ agentId, activeRunId, onViewRun }: Props) {
+  const runs = useQuery(api.runs.list, { agentId });
+  const [open, setOpen] = useState(true);
+
+  if (!runs || runs.length === 0) return null;
+
+  return (
+    <div className="border-t border-zinc-800 bg-[#0d0d0d] shrink-0">
+      {/* Toggle header */}
+      <button
+        className="w-full flex items-center justify-between px-5 py-2 text-[10px] text-zinc-600 hover:text-zinc-400 font-mono uppercase tracking-widest transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <span>history · {runs.length} run{runs.length !== 1 ? "s" : ""}</span>
+        <span className="text-zinc-800">{open ? "▼" : "▲"}</span>
+      </button>
+
+      {open && (
+        <div className="overflow-y-auto max-h-[180px]">
+          {runs.map((run) => (
+            <div
+              key={run._id}
+              onClick={() => onViewRun(run._id)}
+              className={`flex items-center gap-3 px-5 py-1.5 text-[11px] font-mono cursor-pointer transition-colors hover:bg-zinc-900/60 ${
+                run._id === activeRunId ? "bg-zinc-900/80" : ""
+              }`}
+            >
+              <span className="w-3 shrink-0 text-center">
+                <StatusIcon status={run.status as RunStatus} />
+              </span>
+              <span className="flex-1 text-zinc-500 truncate min-w-0">
+                {run.input}
+              </span>
+              {run.totalTokens != null && (
+                <span className="text-zinc-700 shrink-0">{fmtTok(run.totalTokens)}</span>
+              )}
+              {run.durationMs != null && (
+                <span className="text-zinc-700 shrink-0">{fmtMs(run.durationMs)}</span>
+              )}
+              <span className="text-zinc-800 shrink-0">
+                {new Date(run._creationTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
