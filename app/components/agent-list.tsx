@@ -31,15 +31,22 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
       {agents.map((agent) => {
         const isSelected = agent._id === selectedId;
         return (
-          <button
+          <div
             key={agent._id}
-            type="button"
+            role="button"
+            tabIndex={0}
             className={`group relative block w-full text-left cursor-pointer transition-all border-l-2 ${
               isSelected
                 ? "border-emerald-500 bg-zinc-900"
                 : "border-transparent hover:border-zinc-700 hover:bg-zinc-900/40"
             }`}
             onClick={() => onSelect(agent._id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(agent._id);
+              }
+            }}
           >
             <div className="px-3 py-2.5 pr-16">
               <div
@@ -86,7 +93,7 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
                 ×
               </button>
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
