@@ -78,6 +78,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const [streamedText, setStreamedText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
+  const [canScrollToTop, setCanScrollToTop] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
@@ -196,6 +197,15 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const isWorkflowTerminal = runStatus === "completed" || runStatus === "failed" || runStatus === "stopped";
   const isEffectivelyRunning = isRunning && !(activeRun && isWorkflowTerminal);
   const isHistorical = !!activeRun && !isEffectivelyRunning && activeRun.status !== "running";
+  const hasChatOpen = Boolean(activeRunId || (steps && steps.length > 0) || streamedText);
+
+  function handleOutputScroll(e: React.UIEvent<HTMLDivElement>) {
+    setCanScrollToTop(e.currentTarget.scrollTop > 120);
+  }
+
+  function scrollToTop() {
+    outputRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -240,7 +250,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         </div>
       )}
 
-      <div ref={outputRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 font-mono">
+      <div ref={outputRef} onScroll={handleOutputScroll} className="relative flex-1 overflow-y-auto px-5 py-4 space-y-4 font-mono">
         {(!steps || steps.length === 0) && !isEffectivelyRunning && !error && (
           <p className="text-zinc-800 text-xs">enter a prompt below and press run ↓</p>
         )}
@@ -287,6 +297,18 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         )}
 
         {(isFailed || error) && <div className="border-l-2 border-red-900 pl-3 text-xs text-red-500">{activeRun?.error ?? error}</div>}
+
+        {hasChatOpen && canScrollToTop && (
+          <button
+            type="button"
+            onClick={scrollToTop}
+            className="sticky bottom-2 ml-auto block text-[10px] font-mono text-zinc-500 hover:text-zinc-200 border border-zinc-700/80 hover:border-zinc-500 px-2 py-1 rounded bg-[#111]/90 transition-colors"
+            aria-label="Go to top"
+            title="Go to top"
+          >
+            ↑ top
+          </button>
+        )}
 
         <div ref={bottomRef} />
       </div>
