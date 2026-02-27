@@ -8,10 +8,10 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <main className="h-screen bg-[#0a0a0a] text-zinc-100 grid place-items-center p-6">
-      <section className="w-full max-w-lg border border-zinc-800 rounded-md bg-[#111] p-5">
-        <h1 className="text-sm font-mono text-zinc-300">run failed</h1>
-        <p className="mt-2 text-xs text-zinc-500 break-words">{error.message}</p>
+    <main className="h-screen bg-[var(--background)] text-[var(--foreground)] grid place-items-center p-6">
+      <section className="w-full max-w-lg border border-[var(--border)] rounded-md bg-[var(--panel)] p-5">
+        <h1 className="text-sm font-mono text-[var(--muted-strong)]">run failed</h1>
+        <p className="mt-2 text-xs text-[var(--muted)] break-words">{error.message}</p>
         <button
           type="button"
           onClick={() => reset()}

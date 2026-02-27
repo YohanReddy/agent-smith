@@ -256,18 +256,18 @@ export function AgentBuilder({ editId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
 
-      <div className="w-[480px] bg-[#111] border-l border-zinc-800 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800 shrink-0">
-          <h2 className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest font-mono">
+      <div className="w-[480px] bg-[var(--panel)] border-l border-[var(--border)] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)] shrink-0">
+          <h2 className="text-[11px] font-medium text-[var(--muted)] uppercase tracking-widest font-mono">
             {editId ? "Edit Agent" : "New Agent"}
           </h2>
           <button
             type="button"
             aria-label="Close agent builder"
             onClick={onClose}
-            className="text-zinc-600 hover:text-zinc-300 text-xl leading-none transition-colors w-6 h-6 flex items-center justify-center"
+            className="text-[var(--muted)] hover:text-[var(--foreground)] text-xl leading-none transition-colors w-6 h-6 flex items-center justify-center"
           >
             ×
           </button>
@@ -302,8 +302,8 @@ export function AgentBuilder({ editId, onClose }: Props) {
                   key={wf.id}
                   className={`flex items-start gap-3 cursor-pointer p-2 rounded border transition-colors ${
                     form.workflowType === wf.id
-                      ? "border-zinc-600 bg-zinc-900/60"
-                      : "border-transparent hover:border-zinc-800"
+                      ? "border-[var(--muted)] bg-[var(--panel-soft)]"
+                      : "border-transparent hover:border-[var(--border)]"
                   }`}
                 >
                   <input
@@ -317,12 +317,12 @@ export function AgentBuilder({ editId, onClose }: Props) {
                   <div>
                     <div
                       className={`text-sm font-medium ${
-                        form.workflowType === wf.id ? "text-zinc-200" : "text-zinc-500"
+                        form.workflowType === wf.id ? "text-[var(--foreground)]" : "text-[var(--muted)]"
                       }`}
                     >
                       {wf.label}
                     </div>
-                    <div className="text-[11px] text-zinc-700 mt-0.5">{wf.description}</div>
+                    <div className="text-[11px] text-[var(--muted)] mt-0.5">{wf.description}</div>
                   </div>
                 </label>
               ))}
@@ -351,7 +351,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => handleConfigChange(selectedWorkflow.configPlaceholder)}
-                className="mt-1 text-[10px] text-zinc-700 hover:text-zinc-400 transition-colors"
+                className="mt-1 text-[10px] text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 insert default config
               </button>
@@ -372,12 +372,14 @@ export function AgentBuilder({ editId, onClose }: Props) {
                   />
                   <span
                     className={`text-sm ${
-                      form.model === m.id ? "text-zinc-200" : "text-zinc-500 group-hover:text-zinc-400"
+                      form.model === m.id
+                        ? "text-[var(--foreground)]"
+                        : "text-[var(--muted)] group-hover:text-[var(--foreground)]"
                     } transition-colors`}
                   >
                     {m.label}
                   </span>
-                  <span className="text-[10px] text-zinc-700 font-mono ml-auto">{m.provider}</span>
+                  <span className="text-[10px] text-[var(--muted)] font-mono ml-auto">{m.provider}</span>
                 </label>
               ))}
             </div>
@@ -397,12 +399,12 @@ export function AgentBuilder({ editId, onClose }: Props) {
                     <div>
                       <div
                         className={`text-sm font-mono ${
-                          form.tools.includes(t.name) ? "text-zinc-200" : "text-zinc-600"
+                          form.tools.includes(t.name) ? "text-[var(--foreground)]" : "text-[var(--muted)]"
                         } transition-colors`}
                       >
                         {t.name}
                       </div>
-                      <div className="text-[11px] text-zinc-700 mt-0.5">{t.description}</div>
+                      <div className="text-[11px] text-[var(--muted)] mt-0.5">{t.description}</div>
                     </div>
                   </label>
                 ))}
@@ -439,7 +441,9 @@ export function AgentBuilder({ editId, onClose }: Props) {
                       onChange={() => setForm({ ...form, memoryMode: mode })}
                       className="accent-emerald-500"
                     />
-                    <span className={`text-sm ${form.memoryMode === mode ? "text-zinc-200" : "text-zinc-600"}`}>
+                    <span
+                      className={`text-sm ${form.memoryMode === mode ? "text-[var(--foreground)]" : "text-[var(--muted)]"}`}
+                    >
                       {mode}
                     </span>
                   </label>
@@ -449,12 +453,12 @@ export function AgentBuilder({ editId, onClose }: Props) {
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-zinc-800 shrink-0">
+        <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
           <button
             type="button"
             onClick={handleSave}
             disabled={!form.name.trim() || saving || !!configError}
-            className="w-full py-2.5 text-xs font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded transition-colors"
+            className="w-full py-2.5 text-xs font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-[var(--panel-soft)] disabled:text-[var(--muted)] text-white rounded transition-colors"
           >
             {saving ? "saving…" : editId ? "save changes" : "create agent"}
           </button>
@@ -476,8 +480,8 @@ function Field({
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-1.5">
-        <label className="text-[10px] font-medium text-zinc-600 uppercase tracking-widest font-mono">{label}</label>
-        {hint && <span className="text-[10px] text-zinc-800 font-mono">{hint}</span>}
+        <label className="text-[10px] font-medium text-[var(--muted)] uppercase tracking-widest font-mono">{label}</label>
+        {hint && <span className="text-[10px] text-[var(--muted-soft)] font-mono">{hint}</span>}
       </div>
       {children}
     </div>

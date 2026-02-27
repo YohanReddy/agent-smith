@@ -15,12 +15,12 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
   const remove = useMutation(api.agents.remove);
 
   if (!agents) {
-    return <div className="px-4 py-3 text-zinc-700 text-xs font-mono">loading…</div>;
+    return <div className="px-4 py-3 text-[var(--muted)] text-xs font-mono">loading…</div>;
   }
 
   if (agents.length === 0) {
     return (
-      <div className="px-4 py-8 text-zinc-700 text-xs font-mono text-center leading-loose">
+      <div className="px-4 py-8 text-[var(--muted)] text-xs font-mono text-center leading-loose">
         no agents yet
       </div>
     );
@@ -37,8 +37,8 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
             tabIndex={0}
             className={`group relative block w-full text-left cursor-pointer transition-all border-l-2 ${
               isSelected
-                ? "border-emerald-500 bg-zinc-900"
-                : "border-transparent hover:border-zinc-700 hover:bg-zinc-900/40"
+                ? "border-emerald-500 bg-[var(--panel-soft)]"
+                : "border-transparent hover:border-[var(--muted)] hover:bg-[var(--panel-soft)]/60"
             }`}
             onClick={() => onSelect(agent._id)}
             onKeyDown={(e) => {
@@ -51,18 +51,18 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
             <div className="px-3 py-2.5 pr-16">
               <div
                 className={`text-sm font-medium leading-none mb-1 truncate ${
-                  isSelected ? "text-zinc-100" : "text-zinc-400"
+                  isSelected ? "text-[var(--foreground)]" : "text-[var(--muted)]"
                 }`}
               >
                 {agent.name}
               </div>
               <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[10px] text-zinc-700 font-mono truncate">{agent.model}</span>
+                <span className="text-[10px] text-[var(--muted)] font-mono truncate">{agent.model}</span>
                 <span
                   className={`text-[9px] font-mono px-1 py-px rounded border shrink-0 ${
                     agent.workflowType && agent.workflowType !== "standard"
                       ? "text-blue-700 border-blue-900/50 bg-blue-950/20"
-                      : "text-zinc-700 border-zinc-800 bg-zinc-900/40"
+                      : "text-[var(--muted)] border-[var(--border)] bg-[var(--panel-soft)]"
                   }`}
                 >
                   {agent.workflowType ?? "standard"}
@@ -78,7 +78,7 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
                   e.stopPropagation();
                   onEdit(agent._id);
                 }}
-                className="text-[10px] text-zinc-500 hover:text-zinc-200 px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded transition-colors"
+                className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)] px-1.5 py-0.5 bg-[var(--panel-soft)] border border-[var(--border)] rounded transition-colors"
               >
                 edit
               </button>
@@ -92,7 +92,7 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
                     if (isSelected) onSelect(null);
                   }
                 }}
-                className="text-[10px] text-red-600 hover:text-red-400 px-1.5 py-0.5 bg-zinc-800 border border-zinc-800 rounded transition-colors"
+                className="text-[10px] text-red-600 hover:text-red-500 px-1.5 py-0.5 bg-[var(--panel-soft)] border border-[var(--border)] rounded transition-colors"
               >
                 ×
               </button>

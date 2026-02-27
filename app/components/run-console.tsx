@@ -49,12 +49,12 @@ const STEP_TYPE_COLORS: Record<string, string> = {
   worker: "border-amber-800/70",
   synthesis: "border-emerald-800/70",
   classification: "border-purple-800/70",
-  response: "border-zinc-700",
+  response: "border-[var(--muted)]",
   evaluation: "border-yellow-800/70",
-  generation: "border-zinc-700",
+  generation: "border-[var(--muted)]",
   improvement: "border-cyan-800/70",
-  chain: "border-zinc-700",
-  standard: "border-zinc-800",
+  chain: "border-[var(--muted)]",
+  standard: "border-[var(--border)]",
 };
 
 const STEP_TYPE_LABEL: Record<string, string> = {
@@ -62,12 +62,12 @@ const STEP_TYPE_LABEL: Record<string, string> = {
   worker: "text-amber-600",
   synthesis: "text-emerald-600",
   classification: "text-purple-500",
-  response: "text-zinc-500",
+  response: "text-[var(--muted)]",
   evaluation: "text-yellow-600",
-  generation: "text-zinc-500",
+  generation: "text-[var(--muted)]",
   improvement: "text-cyan-600",
-  chain: "text-zinc-500",
-  standard: "text-zinc-600",
+  chain: "text-[var(--muted)]",
+  standard: "text-[var(--muted)]",
 };
 
 const isStandardWorkflow = (wt?: string | null) => !wt || wt === "standard";
@@ -209,28 +209,28 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-2.5 border-b border-zinc-800 flex items-center gap-2.5 shrink-0">
+      <div className="px-5 py-2.5 border-b border-[var(--border)] flex items-center gap-2.5 shrink-0">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-hidden />
-        <span className="text-sm font-medium text-zinc-200">{agent.name}</span>
-        <span className="text-[11px] text-zinc-600 font-mono">{agent.model}</span>
+        <span className="text-sm font-medium text-[var(--foreground)]">{agent.name}</span>
+        <span className="text-[11px] text-[var(--muted)] font-mono">{agent.model}</span>
         <span
           className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ml-1 ${
             workflowLabel === "standard"
-              ? "text-zinc-700 border-zinc-800"
+              ? "text-[var(--muted)] border-[var(--border)]"
               : "text-blue-700 border-blue-900/50 bg-blue-950/20"
           }`}
         >
           {workflowLabel}
         </span>
         {isStandardWorkflow(agent.workflowType) && agent.tools.length > 0 && (
-          <span className="text-[10px] text-zinc-700 font-mono ml-auto">{toolSummary}</span>
+          <span className="text-[10px] text-[var(--muted)] font-mono ml-auto">{toolSummary}</span>
         )}
       </div>
 
       {steps && steps.length > 1 && (
-        <div className="border-b border-zinc-800/60 px-5 py-1.5 flex gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+        <div className="border-b border-[var(--border)] px-5 py-1.5 flex gap-1.5 overflow-x-auto scrollbar-none shrink-0">
           {steps.map((step) => {
-            const color = STEP_TYPE_LABEL[step.stepType ?? "standard"] ?? "text-zinc-600";
+            const color = STEP_TYPE_LABEL[step.stepType ?? "standard"] ?? "text-[var(--muted)]";
             const isActive = activeStepId === `step-${step._id}`;
             return (
               <button
@@ -239,8 +239,8 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
                 onClick={() => scrollToStep(String(step._id))}
                 className={`shrink-0 text-[10px] font-mono px-2 py-0.5 rounded border transition-colors whitespace-nowrap ${
                   isActive
-                    ? `${color} border-zinc-600 bg-zinc-800/60`
-                    : "text-zinc-700 border-zinc-800/60 hover:text-zinc-400 hover:border-zinc-700"
+                    ? `${color} border-[var(--muted)] bg-[var(--panel-soft)]`
+                    : "text-[var(--muted)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--muted)]"
                 }`}
               >
                 {step.stepName ?? `step ${step.stepNumber}`}
@@ -252,11 +252,11 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
 
       <div ref={outputRef} onScroll={handleOutputScroll} className="relative flex-1 overflow-y-auto px-5 py-4 space-y-4 font-mono">
         {(!steps || steps.length === 0) && !isEffectivelyRunning && !error && (
-          <p className="text-zinc-800 text-xs">enter a prompt below and press run ↓</p>
+          <p className="text-[var(--muted-soft)] text-xs">enter a prompt below and press run ↓</p>
         )}
 
         {isHistorical && activeRun && (
-          <div className="text-[10px] text-zinc-700 border-b border-zinc-800/50 pb-2">
+          <div className="text-[10px] text-[var(--muted)] border-b border-[var(--border)] pb-2">
             viewing run · {new Date(activeRun._creationTime).toLocaleString()}
           </div>
         )}
@@ -280,7 +280,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         )}
 
         {isEffectivelyRunning && !streamedText && (
-          <div className="flex items-center gap-2 text-xs text-zinc-700">
+          <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
             <span className="inline-block animate-spin" aria-hidden>
               ⟳
             </span>
@@ -291,7 +291,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         )}
 
         {isCompleted && activeRun && (
-          <div className="text-[10px] text-zinc-700 border-t border-zinc-800/40 pt-2 mt-1">
+          <div className="text-[10px] text-[var(--muted)] border-t border-[var(--border)] pt-2 mt-1">
             ✓ completed · {fmtTok(activeRun.totalTokens ?? 0)} tok · {fmtMs(activeRun.durationMs ?? 0)}
           </div>
         )}
@@ -302,7 +302,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
           <button
             type="button"
             onClick={scrollToTop}
-            className="sticky bottom-2 ml-auto block text-[10px] font-mono text-zinc-500 hover:text-zinc-200 border border-zinc-700/80 hover:border-zinc-500 px-2 py-1 rounded bg-[#111]/90 transition-colors"
+            className="sticky bottom-2 ml-auto block text-[10px] font-mono text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted)] px-2 py-1 rounded bg-[var(--panel)]/90 transition-colors"
             aria-label="Go to top"
             title="Go to top"
           >
@@ -313,9 +313,9 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-zinc-800 px-5 py-4 shrink-0">
+      <div className="border-t border-[var(--border)] px-5 py-4 shrink-0">
         <textarea
-          className="w-full bg-zinc-900/60 border border-zinc-800 focus-visible:border-zinc-600 focus-visible:ring-2 focus-visible:ring-zinc-700 rounded text-sm text-zinc-200 placeholder-zinc-700 px-3 py-2.5 resize-none transition-colors font-sans leading-relaxed"
+          className="w-full bg-[var(--panel-soft)] border border-[var(--border)] focus-visible:border-[var(--muted)] focus-visible:ring-2 focus-visible:ring-[var(--muted)]/40 rounded text-sm text-[var(--foreground)] placeholder-[var(--muted)] px-3 py-2.5 resize-none transition-colors font-sans leading-relaxed"
           rows={3}
           placeholder="Enter a prompt… (Ctrl/Cmd+Enter to run)"
           value={input}
@@ -324,7 +324,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
           disabled={isEffectivelyRunning}
         />
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] text-zinc-700 font-mono">
+          <span className="text-[10px] text-[var(--muted)] font-mono">
             memory: {agent.memoryMode}
             {isStandardWorkflow(agent.workflowType) && ` · max ${agent.maxSteps} steps`}
           </span>
@@ -332,7 +332,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
             type="button"
             onClick={handleRun}
             disabled={!input.trim() || isEffectivelyRunning}
-            className="px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded transition-colors"
+            className="px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-[var(--panel-soft)] disabled:text-[var(--muted)] text-white rounded transition-colors"
           >
             {isEffectivelyRunning ? (
               <span className="flex items-center gap-1.5">
@@ -366,8 +366,8 @@ function parsePreview(value: string, maxLength: number) {
 const StepBlock = memo(function StepBlock({ step, id }: { step: Step; id?: string }) {
   const tokens = (step.inputTokens ?? 0) + (step.outputTokens ?? 0);
   const hasTools = !!step.toolCalls?.length;
-  const borderColor = STEP_TYPE_COLORS[step.stepType ?? "standard"] ?? "border-zinc-800";
-  const labelColor = STEP_TYPE_LABEL[step.stepType ?? "standard"] ?? "text-zinc-600";
+  const borderColor = STEP_TYPE_COLORS[step.stepType ?? "standard"] ?? "border-[var(--border)]";
+  const labelColor = STEP_TYPE_LABEL[step.stepType ?? "standard"] ?? "text-[var(--muted)]";
 
   const toolPreviews = useMemo<ToolPreview[]>(() => {
     if (!step.toolCalls?.length) return [];
@@ -381,25 +381,25 @@ const StepBlock = memo(function StepBlock({ step, id }: { step: Step; id?: strin
   return (
     <div id={id} className={`border-l-2 pl-3 ${hasTools ? "border-amber-800/70" : borderColor}`}>
       <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <span className="text-[10px] text-zinc-700">step {step.stepNumber}</span>
+        <span className="text-[10px] text-[var(--muted)]">step {step.stepNumber}</span>
         {step.stepName && <span className={`text-[10px] font-medium ${labelColor}`}>{step.stepName}</span>}
         {step.stepType && step.stepType !== "standard" && !step.stepName && (
           <span className={`text-[10px] ${labelColor}`}>{step.stepType}</span>
         )}
-        {step.durationMs != null && <span className="text-[10px] text-zinc-800">· {fmtMs(step.durationMs)}</span>}
-        {tokens > 0 && <span className="text-[10px] text-zinc-800">· {fmtTok(tokens)} tok</span>}
-        {step.groupId && <span className="text-[10px] text-zinc-800 ml-auto font-mono">∥ parallel</span>}
+        {step.durationMs != null && <span className="text-[10px] text-[var(--muted-soft)]">· {fmtMs(step.durationMs)}</span>}
+        {tokens > 0 && <span className="text-[10px] text-[var(--muted-soft)]">· {fmtTok(tokens)} tok</span>}
+        {step.groupId && <span className="text-[10px] text-[var(--muted-soft)] ml-auto font-mono">∥ parallel</span>}
       </div>
 
       {toolPreviews.map((tool, index) => (
         <div key={`${tool.toolName}-${index}`} className="mb-2.5">
           <div className="text-[11px] text-amber-600 mb-1">
             ⟳ {tool.toolName}
-            <span className="text-zinc-700 ml-1 font-normal">({tool.argPreview})</span>
+            <span className="text-[var(--muted)] ml-1 font-normal">({tool.argPreview})</span>
           </div>
-          <div className="pl-3 border-l border-zinc-800/80 text-[11px]">
-            <span className="text-zinc-700">→ </span>
-            <span className="text-zinc-500 leading-relaxed">{tool.resultPreview}</span>
+          <div className="pl-3 border-l border-[var(--border)] text-[11px]">
+            <span className="text-[var(--muted)]">→ </span>
+            <span className="text-[var(--muted-strong)] leading-relaxed">{tool.resultPreview}</span>
           </div>
         </div>
       ))}
