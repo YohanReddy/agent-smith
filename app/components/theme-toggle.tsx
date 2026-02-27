@@ -31,10 +31,10 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       className="text-[11px] border border-[var(--border)] hover:border-[var(--muted)] text-[var(--muted)] hover:text-[var(--foreground)] px-2.5 py-1 rounded transition-colors font-mono"
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-      title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+      aria-label="Toggle theme"
+      title="Toggle theme"
     >
-      {theme === "dark" ? "light mode" : "dark mode"}
+      theme
     </button>
   );
 }
