@@ -58,11 +58,15 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
               </div>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="text-[10px] text-zinc-700 font-mono truncate">{agent.model}</span>
-                {agent.workflowType && agent.workflowType !== "standard" && (
-                  <span className="text-[9px] font-mono px-1 py-px rounded border text-blue-700 border-blue-900/50 bg-blue-950/20 shrink-0">
-                    {agent.workflowType}
-                  </span>
-                )}
+                <span
+                  className={`text-[9px] font-mono px-1 py-px rounded border shrink-0 ${
+                    agent.workflowType && agent.workflowType !== "standard"
+                      ? "text-blue-700 border-blue-900/50 bg-blue-950/20"
+                      : "text-zinc-700 border-zinc-800 bg-zinc-900/40"
+                  }`}
+                >
+                  {agent.workflowType ?? "standard"}
+                </span>
               </div>
             </div>
 

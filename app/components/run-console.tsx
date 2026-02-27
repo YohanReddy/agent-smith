@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Streamdown } from "streamdown";
 
 type Agent = {
   _id: Id<"agents">;
@@ -257,10 +258,14 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         {isEffectivelyRunning && streamedText && (
           <div className="border-l-2 border-emerald-600/40 pl-3">
             <div className="text-[10px] text-emerald-700 mb-1.5">streaming</div>
-            <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
+            <Streamdown
+              className="text-sm text-zinc-300 leading-relaxed"
+              controls={false}
+              isAnimating
+              caret="block"
+            >
               {streamedText}
-              <span className="animate-pulse text-emerald-500 ml-px">▍</span>
-            </p>
+            </Streamdown>
           </div>
         )}
 
@@ -377,7 +382,15 @@ const StepBlock = memo(function StepBlock({ step, id }: { step: Step; id?: strin
         </div>
       ))}
 
-      {step.text && <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">{step.text}</p>}
+      {step.text && (
+        <Streamdown
+          mode="static"
+          className="text-sm text-zinc-300 leading-relaxed"
+          controls={false}
+        >
+          {step.text}
+        </Streamdown>
+      )}
     </div>
   );
 });
