@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -79,7 +79,9 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [streamedText, setStreamedText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const outputRef = useRef<HTMLDivElement>(null);
   const prevStepsLen = useRef(0);
 
   const steps = useQuery(api.runs.listSteps, activeRunId ? { runId: activeRunId } : "skip");
@@ -98,6 +100,49 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [steps?.length, streamedText]);
+
+  // Track which step is currently in view
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const visibleSteps = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!steps?.length || !outputRef.current) return;
+    observerRef.current?.disconnect();
+    visibleSteps.current.clear();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            visibleSteps.current.add(e.target.id);
+          } else {
+            visibleSteps.current.delete(e.target.id);
+          }
+        });
+        // Pick the topmost visible step by DOM order
+        if (visibleSteps.current.size > 0) {
+          const all = Array.from(visibleSteps.current);
+          const topmost = all.reduce((best, id) => {
+            const a = document.getElementById(best);
+            const b = document.getElementById(id);
+            if (!a || !b) return best;
+            return a.getBoundingClientRect().top <= b.getBoundingClientRect().top ? best : id;
+          });
+          setActiveStepId(topmost);
+        }
+      },
+      { root: outputRef.current, threshold: 0.1 },
+    );
+    steps.forEach((s) => {
+      const el = document.getElementById(`step-${s._id}`);
+      if (el) observer.observe(el);
+    });
+    observerRef.current = observer;
+    return () => observer.disconnect();
+  }, [steps]);
+
+  const scrollToStep = useCallback((stepId: string) => {
+    document.getElementById(`step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   // Poll for run completion when using workflow (non-streaming)
   useEffect(() => {
@@ -193,8 +238,31 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         )}
       </div>
 
+      {/* Step navigator */}
+      {steps && steps.length > 1 && (
+        <div className="border-b border-zinc-800/60 px-5 py-1.5 flex gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+          {steps.map((step) => {
+            const color = STEP_TYPE_LABEL[step.stepType ?? "standard"] ?? "text-zinc-600";
+            const isActive = activeStepId === `step-${step._id}`;
+            return (
+              <button
+                key={step._id}
+                onClick={() => scrollToStep(String(step._id))}
+                className={`shrink-0 text-[10px] font-mono px-2 py-0.5 rounded border transition-colors whitespace-nowrap ${
+                  isActive
+                    ? `${color} border-zinc-600 bg-zinc-800/60`
+                    : "text-zinc-700 border-zinc-800/60 hover:text-zinc-400 hover:border-zinc-700"
+                }`}
+              >
+                {step.stepName ?? `step ${step.stepNumber}`}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Output area */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 font-mono">
+      <div ref={outputRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 font-mono">
         {(!steps || steps.length === 0) && !isRunning && !error && (
           <p className="text-zinc-800 text-xs">enter a prompt below and press run ↓</p>
         )}
@@ -207,7 +275,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
 
         {/* Completed steps */}
         {steps?.map((step) => (
-          <StepBlock key={step._id} step={step as Step} />
+          <StepBlock key={step._id} id={`step-${step._id}`} step={step as Step} />
         ))}
 
         {/* Live streaming text (standard workflow only) */}
@@ -283,7 +351,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   );
 }
 
-function StepBlock({ step }: { step: Step }) {
+function StepBlock({ step, id }: { step: Step; id?: string }) {
   const tokens = (step.inputTokens ?? 0) + (step.outputTokens ?? 0);
   const hasTools = !!step.toolCalls?.length;
   const borderColor =
@@ -292,7 +360,7 @@ function StepBlock({ step }: { step: Step }) {
     STEP_TYPE_LABEL[step.stepType ?? "standard"] ?? "text-zinc-600";
 
   return (
-    <div className={`border-l-2 pl-3 ${hasTools ? "border-amber-800/70" : borderColor}`}>
+    <div id={id} className={`border-l-2 pl-3 ${hasTools ? "border-amber-800/70" : borderColor}`}>
       {/* Step meta */}
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span className="text-[10px] text-zinc-700">step {step.stepNumber}</span>

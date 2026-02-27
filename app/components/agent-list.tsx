@@ -50,8 +50,15 @@ export function AgentList({ selectedId, onSelect, onEdit }: Props) {
               >
                 {agent.name}
               </div>
-              <div className="text-[10px] text-zinc-700 font-mono truncate">
-                {agent.model}
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-[10px] text-zinc-700 font-mono truncate">
+                  {agent.model}
+                </span>
+                {agent.workflowType && agent.workflowType !== "standard" && (
+                  <span className="text-[9px] font-mono px-1 py-px rounded border text-blue-700 border-blue-900/50 bg-blue-950/20 shrink-0">
+                    {agent.workflowType}
+                  </span>
+                )}
               </div>
             </div>
 
