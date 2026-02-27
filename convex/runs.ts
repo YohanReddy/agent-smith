@@ -45,6 +45,9 @@ export const addStep = mutation({
   args: {
     runId: v.id("runs"),
     stepNumber: v.number(),
+    stepName: v.optional(v.string()),
+    stepType: v.optional(v.string()),
+    groupId: v.optional(v.string()),
     text: v.optional(v.string()),
     toolCalls: v.optional(
       v.array(
@@ -74,6 +77,18 @@ export const complete = mutation({
   },
   handler: async (ctx, { id, ...rest }) => {
     await ctx.db.patch(id, { status: "completed", ...rest });
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("runs") },
+  handler: async (ctx, { id }) => {
+    const steps = await ctx.db
+      .query("steps")
+      .withIndex("by_run", (q) => q.eq("runId", id))
+      .collect();
+    await Promise.all(steps.map((s) => ctx.db.delete(s._id)));
+    await ctx.db.delete(id);
   },
 });
 

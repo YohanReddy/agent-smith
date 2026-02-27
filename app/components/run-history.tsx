@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -9,6 +9,7 @@ interface Props {
   agentId: Id<"agents">;
   activeRunId: Id<"runs"> | null;
   onViewRun: (runId: Id<"runs">) => void;
+  onRunDeleted?: (runId: Id<"runs">) => void;
 }
 
 type RunStatus = "running" | "completed" | "failed" | "stopped";
@@ -34,9 +35,16 @@ function fmtTok(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
-export function RunHistory({ agentId, activeRunId, onViewRun }: Props) {
+export function RunHistory({ agentId, activeRunId, onViewRun, onRunDeleted }: Props) {
   const runs = useQuery(api.runs.list, { agentId });
+  const removeRun = useMutation(api.runs.remove);
   const [open, setOpen] = useState(true);
+
+  async function handleDelete(e: React.MouseEvent, runId: Id<"runs">) {
+    e.stopPropagation();
+    await removeRun({ id: runId });
+    if (runId === activeRunId) onRunDeleted?.(runId);
+  }
 
   if (!runs || runs.length === 0) return null;
 
@@ -57,7 +65,7 @@ export function RunHistory({ agentId, activeRunId, onViewRun }: Props) {
             <div
               key={run._id}
               onClick={() => onViewRun(run._id)}
-              className={`flex items-center gap-3 px-5 py-1.5 text-[11px] font-mono cursor-pointer transition-colors hover:bg-zinc-900/60 ${
+              className={`group flex items-center gap-3 px-5 py-1.5 text-[11px] font-mono cursor-pointer transition-colors hover:bg-zinc-900/60 ${
                 run._id === activeRunId ? "bg-zinc-900/80" : ""
               }`}
             >
@@ -76,6 +84,13 @@ export function RunHistory({ agentId, activeRunId, onViewRun }: Props) {
               <span className="text-zinc-800 shrink-0">
                 {new Date(run._creationTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
+              <button
+                onClick={(e) => handleDelete(e, run._id)}
+                className="opacity-0 group-hover:opacity-100 text-zinc-700 hover:text-red-500 transition-all ml-1 shrink-0 leading-none"
+                title="Delete run"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>

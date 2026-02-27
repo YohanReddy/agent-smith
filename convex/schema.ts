@@ -1,28 +1,39 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const workflowType = v.optional(
+  v.union(
+    v.literal("standard"),
+    v.literal("chain"),
+    v.literal("parallel"),
+    v.literal("orchestrator"),
+    v.literal("evaluator"),
+    v.literal("router"),
+  ),
+);
+
+const agentCore = {
+  name: v.string(),
+  description: v.string(),
+  systemPrompt: v.string(),
+  model: v.string(),
+  tools: v.array(v.string()),
+  memoryMode: v.union(v.literal("none"), v.literal("summary"), v.literal("full")),
+  maxSteps: v.number(),
+  workflowType,
+  workflowConfig: v.optional(v.string()), // JSON-stringified workflow-specific config
+};
+
 export default defineSchema({
   agents: defineTable({
-    name: v.string(),
-    description: v.string(),
-    systemPrompt: v.string(),
-    model: v.string(),
-    tools: v.array(v.string()),
-    memoryMode: v.union(v.literal("none"), v.literal("summary"), v.literal("full")),
-    maxSteps: v.number(),
+    ...agentCore,
     latestVersion: v.number(),
   }).index("by_name", ["name"]),
 
   agentVersions: defineTable({
     agentId: v.id("agents"),
     version: v.number(),
-    name: v.string(),
-    description: v.string(),
-    systemPrompt: v.string(),
-    model: v.string(),
-    tools: v.array(v.string()),
-    memoryMode: v.union(v.literal("none"), v.literal("summary"), v.literal("full")),
-    maxSteps: v.number(),
+    ...agentCore,
   })
     .index("by_agent", ["agentId"])
     .index("by_agent_version", ["agentId", "version"]),
@@ -46,6 +57,9 @@ export default defineSchema({
   steps: defineTable({
     runId: v.id("runs"),
     stepNumber: v.number(),
+    stepName: v.optional(v.string()), // e.g. "Draft", "Security Review", "Evaluate"
+    stepType: v.optional(v.string()), // e.g. "plan", "worker", "evaluation", "synthesis", "classification"
+    groupId: v.optional(v.string()),  // for grouping parallel steps
     text: v.optional(v.string()),
     toolCalls: v.optional(
       v.array(

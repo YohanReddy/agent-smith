@@ -1,6 +1,17 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const workflowType = v.optional(
+  v.union(
+    v.literal("standard"),
+    v.literal("chain"),
+    v.literal("parallel"),
+    v.literal("orchestrator"),
+    v.literal("evaluator"),
+    v.literal("router"),
+  ),
+);
+
 const agentFields = {
   name: v.string(),
   description: v.string(),
@@ -9,6 +20,8 @@ const agentFields = {
   tools: v.array(v.string()),
   memoryMode: v.union(v.literal("none"), v.literal("summary"), v.literal("full")),
   maxSteps: v.number(),
+  workflowType,
+  workflowConfig: v.optional(v.string()),
 };
 
 export const list = query({

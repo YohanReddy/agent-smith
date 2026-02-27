@@ -74,6 +74,7 @@ export default function Home() {
                 agentId={selectedAgent._id}
                 activeRunId={activeRunId}
                 onViewRun={setActiveRunId}
+                onRunDeleted={() => setActiveRunId(null)}
               />
             </>
           ) : (
