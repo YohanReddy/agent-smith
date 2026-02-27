@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AVAILABLE_TOOLS } from "@/tools/registry";
@@ -26,14 +26,14 @@ const WORKFLOW_TYPES: Array<{
   {
     id: "standard",
     label: "Standard",
-    description: "Multi-step tool loop — the default agentic behavior",
+    description: "Multi-step tool loop - the default agentic behavior",
     configPlaceholder: "",
     systemPromptHint: "The agent's main system prompt",
   },
   {
     id: "chain",
     label: "Chain",
-    description: "Sequential steps — each output becomes the next step's input",
+    description: "Sequential steps - each output becomes the next step's input",
     configPlaceholder: JSON.stringify(
       {
         steps: [
@@ -63,7 +63,7 @@ const WORKFLOW_TYPES: Array<{
       null,
       2,
     ),
-    systemPromptHint: "Not used directly — define workers in config",
+    systemPromptHint: "Not used directly - define workers in config",
   },
   {
     id: "orchestrator",
@@ -71,8 +71,7 @@ const WORKFLOW_TYPES: Array<{
     description: "Planner breaks the task into subtasks, workers execute in parallel",
     configPlaceholder: JSON.stringify(
       {
-        workerSystemPrompt:
-          "You are a skilled specialist. Execute the assigned task precisely and thoroughly.",
+        workerSystemPrompt: "You are a skilled specialist. Execute the assigned task precisely and thoroughly.",
       },
       null,
       2,
@@ -82,7 +81,7 @@ const WORKFLOW_TYPES: Array<{
   {
     id: "evaluator",
     label: "Evaluator",
-    description: "Generate → evaluate quality → improve iteratively until passing score",
+    description: "Generate -> evaluate quality -> improve iteratively until passing score",
     configPlaceholder: JSON.stringify(
       {
         maxIterations: 3,
@@ -225,15 +224,16 @@ export function AgentBuilder({ editId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
 
       <div className="w-[480px] bg-[#111] border-l border-zinc-800 flex flex-col overflow-hidden">
-        {/* header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800 shrink-0">
           <h2 className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest font-mono">
             {editId ? "Edit Agent" : "New Agent"}
           </h2>
           <button
+            type="button"
+            aria-label="Close agent builder"
             onClick={onClose}
             className="text-zinc-600 hover:text-zinc-300 text-xl leading-none transition-colors w-6 h-6 flex items-center justify-center"
           >
@@ -241,7 +241,6 @@ export function AgentBuilder({ editId, onClose }: Props) {
           </button>
         </div>
 
-        {/* form */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           <Field label="Name">
             <input
@@ -249,6 +248,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
               placeholder="Research Agent"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              autoComplete="off"
               autoFocus
             />
           </Field>
@@ -259,10 +259,10 @@ export function AgentBuilder({ editId, onClose }: Props) {
               placeholder="What does this agent do?"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
+              autoComplete="off"
             />
           </Field>
 
-          {/* Workflow type */}
           <Field label="Workflow">
             <div className="space-y-1.5">
               {WORKFLOW_TYPES.map((wf) => (
@@ -297,10 +297,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
             </div>
           </Field>
 
-          <Field
-            label="System Prompt"
-            hint={selectedWorkflow.systemPromptHint}
-          >
+          <Field label="System Prompt" hint={selectedWorkflow.systemPromptHint}>
             <textarea
               className="input w-full h-28 resize-none font-mono text-xs leading-relaxed"
               placeholder="You are a helpful assistant."
@@ -309,12 +306,8 @@ export function AgentBuilder({ editId, onClose }: Props) {
             />
           </Field>
 
-          {/* Workflow Config — shown for non-standard workflows */}
           {form.workflowType !== "standard" && (
-            <Field
-              label="Workflow Config"
-              hint={configError ?? "JSON"}
-            >
+            <Field label="Workflow Config" hint={configError ?? "JSON"}>
               <textarea
                 className={`input w-full h-48 resize-none font-mono text-[11px] leading-relaxed ${
                   configError ? "border-red-800" : ""
@@ -325,9 +318,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
               />
               <button
                 type="button"
-                onClick={() =>
-                  handleConfigChange(selectedWorkflow.configPlaceholder)
-                }
+                onClick={() => handleConfigChange(selectedWorkflow.configPlaceholder)}
                 className="mt-1 text-[10px] text-zinc-700 hover:text-zinc-400 transition-colors"
               >
                 insert default config
@@ -360,7 +351,6 @@ export function AgentBuilder({ editId, onClose }: Props) {
             </div>
           </Field>
 
-          {/* Tools — only relevant for standard workflow */}
           {form.workflowType === "standard" && (
             <Field label="Tools">
               <div className="space-y-2">
@@ -399,9 +389,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
                   value={form.maxSteps}
                   onChange={(e) => {
                     const parsed = Number(e.target.value);
-                    const maxSteps = Number.isFinite(parsed)
-                      ? Math.max(1, Math.min(50, Math.floor(parsed)))
-                      : 10;
+                    const maxSteps = Number.isFinite(parsed) ? Math.max(1, Math.min(50, Math.floor(parsed))) : 10;
                     setForm({ ...form, maxSteps });
                   }}
                 />
@@ -419,11 +407,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
                       onChange={() => setForm({ ...form, memoryMode: mode })}
                       className="accent-emerald-500"
                     />
-                    <span
-                      className={`text-sm ${
-                        form.memoryMode === mode ? "text-zinc-200" : "text-zinc-600"
-                      }`}
-                    >
+                    <span className={`text-sm ${form.memoryMode === mode ? "text-zinc-200" : "text-zinc-600"}`}>
                       {mode}
                     </span>
                   </label>
@@ -433,14 +417,14 @@ export function AgentBuilder({ editId, onClose }: Props) {
           </div>
         </div>
 
-        {/* footer */}
         <div className="px-5 py-4 border-t border-zinc-800 shrink-0">
           <button
+            type="button"
             onClick={handleSave}
             disabled={!form.name.trim() || saving || !!configError}
             className="w-full py-2.5 text-xs font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded transition-colors"
           >
-            {saving ? "saving..." : editId ? "save changes" : "create agent"}
+            {saving ? "saving…" : editId ? "save changes" : "create agent"}
           </button>
         </div>
       </div>
@@ -460,12 +444,8 @@ function Field({
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-1.5">
-        <label className="text-[10px] font-medium text-zinc-600 uppercase tracking-widest font-mono">
-          {label}
-        </label>
-        {hint && (
-          <span className="text-[10px] text-zinc-800 font-mono">{hint}</span>
-        )}
+        <label className="text-[10px] font-medium text-zinc-600 uppercase tracking-widest font-mono">{label}</label>
+        {hint && <span className="text-[10px] text-zinc-800 font-mono">{hint}</span>}
       </div>
       {children}
     </div>

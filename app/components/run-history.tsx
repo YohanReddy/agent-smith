@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -19,7 +19,7 @@ function StatusIcon({ status }: { status: RunStatus }) {
     case "completed":
       return <span className="text-emerald-600">✓</span>;
     case "failed":
-      return <span className="text-red-600">✗</span>;
+      return <span className="text-red-600">✕</span>;
     case "running":
       return <span className="animate-spin inline-block text-zinc-500 text-[11px]">⟳</span>;
     case "stopped":
@@ -50,13 +50,16 @@ export function RunHistory({ agentId, activeRunId, onViewRun, onRunDeleted }: Pr
 
   return (
     <div className="border-t border-zinc-800 bg-[#0d0d0d] shrink-0">
-      {/* Toggle header */}
       <button
+        type="button"
         className="w-full flex items-center justify-between px-5 py-2 text-[10px] text-zinc-600 hover:text-zinc-400 font-mono uppercase tracking-widest transition-colors"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
       >
         <span>history · {runs.length} run{runs.length !== 1 ? "s" : ""}</span>
-        <span className="text-zinc-800">{open ? "▼" : "▲"}</span>
+        <span className="text-zinc-800" aria-hidden>
+          {open ? "▼" : "▲"}
+        </span>
       </button>
 
       {open && (
@@ -64,29 +67,33 @@ export function RunHistory({ agentId, activeRunId, onViewRun, onRunDeleted }: Pr
           {runs.map((run) => (
             <div
               key={run._id}
+              role="button"
+              tabIndex={0}
               onClick={() => onViewRun(run._id)}
-              className={`group flex items-center gap-3 px-5 py-1.5 text-[11px] font-mono cursor-pointer transition-colors hover:bg-zinc-900/60 ${
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onViewRun(run._id);
+                }
+              }}
+              className={`group w-full text-left flex items-center gap-3 px-5 py-1.5 text-[11px] font-mono cursor-pointer transition-colors hover:bg-zinc-900/60 ${
                 run._id === activeRunId ? "bg-zinc-900/80" : ""
               }`}
             >
               <span className="w-3 shrink-0 text-center">
                 <StatusIcon status={run.status as RunStatus} />
               </span>
-              <span className="flex-1 text-zinc-500 truncate min-w-0">
-                {run.input}
-              </span>
-              {run.totalTokens != null && (
-                <span className="text-zinc-700 shrink-0">{fmtTok(run.totalTokens)}</span>
-              )}
-              {run.durationMs != null && (
-                <span className="text-zinc-700 shrink-0">{fmtMs(run.durationMs)}</span>
-              )}
+              <span className="flex-1 text-zinc-500 truncate min-w-0">{run.input}</span>
+              {run.totalTokens != null && <span className="text-zinc-700 shrink-0">{fmtTok(run.totalTokens)}</span>}
+              {run.durationMs != null && <span className="text-zinc-700 shrink-0">{fmtMs(run.durationMs)}</span>}
               <span className="text-zinc-800 shrink-0">
                 {new Date(run._creationTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
               <button
+                type="button"
                 onClick={(e) => handleDelete(e, run._id)}
                 className="opacity-0 group-hover:opacity-100 text-zinc-700 hover:text-red-500 transition-all ml-1 shrink-0 leading-none"
+                aria-label="Delete run"
                 title="Delete run"
               >
                 ×

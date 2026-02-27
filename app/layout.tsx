@@ -14,7 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent Smith",
+  metadataBase: new URL("http://localhost:3000"),
+  title: {
+    default: "Agent Smith",
+    template: "%s | Agent Smith",
+  },
   description: "AI agent workbench",
 };
 
