@@ -137,6 +137,22 @@ const defaultForm = {
   workflowConfig: "",
 };
 
+function buildSystemPrompt(name: string, description: string) {
+  const trimmedName = name.trim();
+  const trimmedDescription = description.trim().replace(/[.!?]+$/, "");
+
+  if (trimmedName && trimmedDescription) {
+    return `You are a ${trimmedName} - ${trimmedDescription}.`;
+  }
+  if (trimmedName) {
+    return `You are a ${trimmedName}.`;
+  }
+  if (trimmedDescription) {
+    return `You are an agent - ${trimmedDescription}.`;
+  }
+  return "You are a helpful assistant.";
+}
+
 interface Props {
   editId: Id<"agents"> | null;
   onClose: () => void;
@@ -222,6 +238,22 @@ export function AgentBuilder({ editId, onClose }: Props) {
     }));
   }
 
+  function handleNameChange(name: string) {
+    setForm((f) => ({
+      ...f,
+      name,
+      systemPrompt: buildSystemPrompt(name, f.description),
+    }));
+  }
+
+  function handleDescriptionChange(description: string) {
+    setForm((f) => ({
+      ...f,
+      description,
+      systemPrompt: buildSystemPrompt(f.name, description),
+    }));
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
@@ -247,7 +279,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
               className="input w-full"
               placeholder="Research Agent"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => handleNameChange(e.target.value)}
               autoComplete="off"
               autoFocus
             />
@@ -258,7 +290,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
               className="input w-full"
               placeholder="What does this agent do?"
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               autoComplete="off"
             />
           </Field>
