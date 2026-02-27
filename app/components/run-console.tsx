@@ -259,7 +259,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
           <div className="border-l-2 border-emerald-600/40 pl-3">
             <div className="text-[10px] text-emerald-700 mb-1.5">streaming</div>
             <Streamdown
-              className="text-sm text-zinc-300 leading-relaxed"
+              className="streamdown-console text-sm leading-relaxed"
               controls={false}
               isAnimating
               caret="block"
@@ -385,7 +385,7 @@ const StepBlock = memo(function StepBlock({ step, id }: { step: Step; id?: strin
       {step.text && (
         <Streamdown
           mode="static"
-          className="text-sm text-zinc-300 leading-relaxed"
+          className="streamdown-console text-sm leading-relaxed"
           controls={false}
         >
           {step.text}

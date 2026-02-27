@@ -51,3 +51,102 @@ body {
   border-color: #52525b;
   box-shadow: 0 0 0 2px rgba(82, 82, 91, 0.4);
 }
+
+.streamdown-console {
+  color: #a1a1aa !important;
+}
+
+.streamdown-console [data-streamdown] {
+  color: inherit !important;
+}
+
+.streamdown-console [data-streamdown^="heading-"] {
+  color: #d4d4d8 !important;
+}
+
+.streamdown-console [data-streamdown="strong"] {
+  color: #e4e4e7 !important;
+}
+
+.streamdown-console [data-streamdown="ordered-list"],
+.streamdown-console [data-streamdown="unordered-list"],
+.streamdown-console [data-streamdown="list-item"],
+.streamdown-console [data-streamdown="table-body"],
+.streamdown-console [data-streamdown="table-cell"],
+.streamdown-console [data-streamdown="paragraph"] {
+  color: #a1a1aa !important;
+}
+
+.streamdown-console [data-streamdown="em"] {
+  color: #c4c4ca !important;
+}
+
+.streamdown-console [data-streamdown="link"] {
+  color: #a3a3a3 !important;
+}
+
+.streamdown-console [data-streamdown="blockquote"] {
+  color: #a1a1aa !important;
+  border-left-color: rgba(113, 113, 122, 0.5) !important;
+}
+
+.streamdown-console [data-streamdown="table-header"],
+.streamdown-console [data-streamdown="table-header-cell"] {
+  color: #d4d4d8 !important;
+  background: rgba(39, 39, 42, 0.45) !important;
+}
+
+.streamdown-console [data-streamdown="table-row"] {
+  border-color: rgba(63, 63, 70, 0.7) !important;
+}
+
+.streamdown-console [data-streamdown="horizontal-rule"] {
+  border-color: rgba(63, 63, 70, 0.65) !important;
+}
+
+.streamdown-console [data-streamdown="inline-code"] {
+  color: #d4d4d8 !important;
+  background: rgba(39, 39, 42, 0.8) !important;
+}
+
+.streamdown-console :is(p, li, td) {
+  color: #a1a1aa !important;
+}
+
+.streamdown-console th {
+  color: #d4d4d8 !important;
+}
+
+.streamdown-console em {
+  color: #c4c4ca !important;
+}
+
+.streamdown-console :is(h1, h2, h3, h4, h5, h6) {
+  color: #d4d4d8 !important;
+}
+
+.streamdown-console strong {
+  color: #e4e4e7 !important;
+}
+
+.streamdown-console a {
+  color: #a3a3a3 !important;
+}
+
+.streamdown-console blockquote {
+  color: #a1a1aa !important;
+  border-left-color: rgba(113, 113, 122, 0.5) !important;
+}
+
+.streamdown-console :is(table, thead, tbody, tr, th, td) {
+  border-color: rgba(63, 63, 70, 0.7) !important;
+}
+
+.streamdown-console hr {
+  border-color: rgba(63, 63, 70, 0.65) !important;
+}
+
+.streamdown-console :not(pre) > code {
+  color: #d4d4d8 !important;
+  background: rgba(39, 39, 42, 0.8) !important;
+}
