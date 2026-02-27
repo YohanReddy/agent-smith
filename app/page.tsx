@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -13,13 +13,25 @@ export default function Home() {
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [builderState, setBuilderState] = useState<"new" | Id<"agents"> | null>(null);
   const [activeRunId, setActiveRunId] = useState<Id<"runs"> | null>(null);
+  const [pendingAutoOpenAgentId, setPendingAutoOpenAgentId] = useState<Id<"agents"> | null>(null);
 
   const selectedAgent = useQuery(api.agents.get, selectedAgentId ? { id: selectedAgentId } : "skip");
+  const selectedAgentRuns = useQuery(api.runs.list, selectedAgentId ? { agentId: selectedAgentId } : "skip");
 
   function selectAgent(id: Id<"agents"> | null) {
     setSelectedAgentId(id);
     setActiveRunId(null);
+    setPendingAutoOpenAgentId(id);
   }
+
+  useEffect(() => {
+    if (!pendingAutoOpenAgentId) return;
+    if (selectedAgentId !== pendingAutoOpenAgentId) return;
+    if (!selectedAgentRuns) return;
+
+    setActiveRunId(selectedAgentRuns[0]?._id ?? null);
+    setPendingAutoOpenAgentId(null);
+  }, [pendingAutoOpenAgentId, selectedAgentId, selectedAgentRuns]);
 
   return (
     <div className="h-screen bg-[#0a0a0a] text-zinc-100 flex flex-col overflow-hidden select-none">
