@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 const workflowType = v.optional(
   v.union(
     v.literal("standard"),
+    v.literal("hitl"),
     v.literal("chain"),
     v.literal("parallel"),
     v.literal("orchestrator"),

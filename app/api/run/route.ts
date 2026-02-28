@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { streamText, stepCountIs } from "ai";
+import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { ConvexHttpClient } from "convex/browser";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getEnabledTools } from "@/tools";
+import { parseFullMemory, persistMemory, renderFullMemoryForPrompt } from "./memory";
+import { runHitlTurn, serializeHitlState } from "./workflows/hitl";
 import { getModel } from "./workflows/types";
 import { runChain } from "./workflows/chain";
 import { runParallel } from "./workflows/parallel";
@@ -17,62 +19,6 @@ const requestSchema = z.object({
   agentId: z.string().min(1),
   input: z.string().trim().min(1).max(20_000),
 });
-const fullMemoryTurnSchema = z.array(
-  z.object({
-    role: z.union([z.literal("user"), z.literal("assistant")]),
-    content: z.string(),
-  }),
-);
-const FULL_MEMORY_TURN_LIMIT = 40;
-const SUMMARY_MEMORY_MAX_CHARS = 30_000;
-type ConversationTurn = { role: "user" | "assistant"; content: string };
-
-function parseFullMemory(raw: string | undefined): ConversationTurn[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    const result = fullMemoryTurnSchema.safeParse(parsed);
-    return result.success ? result.data : [];
-  } catch {
-    return [];
-  }
-}
-
-function formatSummaryMemory(existing: string | undefined, input: string, output: string) {
-  const entry = `[${new Date().toISOString()}]\nInput: ${input.slice(0, 200)}\nOutput: ${output.slice(0, 500)}`;
-  const next = existing ? `${existing}\n\n---\n${entry}` : entry;
-  return next.slice(-SUMMARY_MEMORY_MAX_CHARS);
-}
-
-function formatFullMemory(existing: string | undefined, input: string, output: string) {
-  const turns = parseFullMemory(existing);
-  const nextTurns = [...turns, { role: "user" as const, content: input }, { role: "assistant" as const, content: output }]
-    .slice(-FULL_MEMORY_TURN_LIMIT);
-  return JSON.stringify(nextTurns);
-}
-
-async function persistMemory(
-  agentId: Id<"agents">,
-  mode: "none" | "summary" | "full",
-  input: string,
-  output: string,
-) {
-  if (!output || mode === "none") return;
-  const existing = await convex.query(api.memory.get, { agentId });
-  const content =
-    mode === "full"
-      ? formatFullMemory(existing?.content, input, output)
-      : formatSummaryMemory(existing?.content, input, output);
-  await convex.mutation(api.memory.set, { agentId, content });
-}
-
-function renderFullMemoryForPrompt(raw: string | undefined) {
-  const turns = parseFullMemory(raw);
-  if (!turns.length) return "(no memory yet)";
-  return turns
-    .map((turn) => `${turn.role === "user" ? "User" : "Assistant"}: ${turn.content}`)
-    .join("\n\n");
-}
 
 export async function POST(req: NextRequest) {
   const parsedBody = requestSchema.safeParse(await req.json());
@@ -115,6 +61,69 @@ export async function POST(req: NextRequest) {
         ? `Conversation history:\n${renderFullMemoryForPrompt(memoryDoc.content)}\n\nCurrent input:\n${input}`
         : input;
     const ctx = { agent: agentWithResolvedPrompt, input: workflowInput, runId, convex, startedAt };
+    const history = agent.memoryMode === "full" ? parseFullMemory(memoryDoc?.content) : [];
+
+    if (workflowType === "hitl") {
+      const initialMessages: ModelMessage[] = [
+        ...history.map((turn) =>
+          turn.role === "user"
+            ? { role: "user" as const, content: [{ type: "text" as const, text: turn.content }] }
+            : { role: "assistant" as const, content: [{ type: "text" as const, text: turn.content }] },
+        ),
+        { role: "user", content: [{ type: "text" as const, text: input }] },
+      ];
+
+      try {
+        const turn = await runHitlTurn({
+          agent: agentWithResolvedPrompt,
+          messages: initialMessages,
+          convex,
+          agentId,
+        });
+
+        for (let i = 0; i < turn.steps.length; i++) {
+          const step = turn.steps[i];
+          await convex.mutation(api.runs.addStep, {
+            runId,
+            stepNumber: i + 1,
+            stepName: step.stepName,
+            stepType: step.stepType,
+            text: step.text,
+            toolCalls: step.toolCalls,
+            inputTokens: step.inputTokens,
+            outputTokens: step.outputTokens,
+            finishReason: step.finishReason,
+          });
+        }
+
+        if (turn.pendingApprovals.length > 0) {
+          await convex.mutation(api.runs.setHitlState, {
+            id: runId,
+            hitlState: serializeHitlState({
+              messages: turn.nextMessages,
+              pendingApprovals: turn.pendingApprovals,
+            }),
+          });
+          return NextResponse.json({ runId }, { headers: { "X-Run-Id": runId } });
+        }
+
+        await convex.mutation(api.runs.complete, {
+          id: runId,
+          output: turn.output,
+          totalTokens: turn.totalTokens,
+          durationMs: Date.now() - startedAt,
+        });
+        await persistMemory(convex, typedAgentId, agent.memoryMode, input, turn.output);
+        return NextResponse.json({ runId }, { headers: { "X-Run-Id": runId } });
+      } catch (err) {
+        await convex.mutation(api.runs.fail, {
+          id: runId,
+          error: String(err),
+          durationMs: Date.now() - startedAt,
+        });
+        return NextResponse.json({ error: String(err) }, { status: 500 });
+      }
+    }
 
     // Non-standard workflows: execute async and return run metadata.
     if (workflowType !== "standard") {
@@ -141,7 +150,7 @@ export async function POST(req: NextRequest) {
             durationMs: Date.now() - startedAt,
           });
 
-          await persistMemory(typedAgentId, agent.memoryMode, input, result.output);
+          await persistMemory(convex, typedAgentId, agent.memoryMode, input, result.output);
         } catch (err) {
           await convex.mutation(api.runs.fail, {
             id: runId!,
@@ -162,7 +171,6 @@ export async function POST(req: NextRequest) {
 
     const enabledTools = getEnabledTools(agent.tools, convex, agentId);
     const hasTools = Object.keys(enabledTools).length > 0;
-    const history = agent.memoryMode === "full" ? parseFullMemory(memoryDoc?.content) : [];
     const messages: Array<{ role: "user" | "assistant"; content: string }> = [
       ...history.map((turn) => ({ role: turn.role, content: turn.content })),
       { role: "user", content: input },
@@ -216,7 +224,7 @@ export async function POST(req: NextRequest) {
           durationMs,
         });
 
-        await persistMemory(typedAgentId, agent.memoryMode, input, text);
+        await persistMemory(convex, typedAgentId, agent.memoryMode, input, text);
       },
     });
 

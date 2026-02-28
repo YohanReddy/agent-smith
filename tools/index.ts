@@ -8,6 +8,10 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { AVAILABLE_TOOLS, type ToolName } from "./registry";
 
 export { AVAILABLE_TOOLS, ToolName };
+type ToolOptions = {
+  approvalRequiredToolNames?: string[];
+};
+
 const MAX_FETCH_BYTES = 8000;
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -90,7 +94,10 @@ async function readBodyWithLimit(response: Response, maxBytes: number) {
   return out;
 }
 
-export function createTools(convex: ConvexHttpClient, agentId: string) {
+export function createTools(convex: ConvexHttpClient, agentId: string, options: ToolOptions = {}) {
+  const approvalRequired = new Set(options.approvalRequiredToolNames ?? []);
+  const withApproval = (toolName: ToolName) => (approvalRequired.has(toolName) ? { needsApproval: true as const } : {});
+
   return {
     web_search: tool({
       description: "Search the web for current information",
@@ -98,6 +105,7 @@ export function createTools(convex: ConvexHttpClient, agentId: string) {
         query: z.string().describe("The search query"),
       }),
       outputSchema: z.string(),
+      ...withApproval("web_search"),
       execute: async (input): Promise<string> => {
         const apiKey = process.env.TAVILY_API_KEY;
         if (!apiKey) return "web_search requires TAVILY_API_KEY to be set.";
@@ -141,6 +149,7 @@ export function createTools(convex: ConvexHttpClient, agentId: string) {
         url: z.string().url().describe("The URL to fetch"),
       }),
       outputSchema: z.string(),
+      ...withApproval("fetch_url"),
       execute: async (input): Promise<string> => {
         try {
           const safeUrl = await validateExternalHttpUrl(input.url);
@@ -182,6 +191,7 @@ export function createTools(convex: ConvexHttpClient, agentId: string) {
       description: "Read the agent's persisted memory from previous runs",
       inputSchema: z.object({}),
       outputSchema: z.string(),
+      ...withApproval("read_memory"),
       execute: async (): Promise<string> => {
         try {
           const memory = await convex.query(api.memory.get, {
@@ -200,6 +210,7 @@ export function createTools(convex: ConvexHttpClient, agentId: string) {
         content: z.string().describe("The content to store in memory"),
       }),
       outputSchema: z.string(),
+      ...withApproval("write_memory"),
       execute: async (input): Promise<string> => {
         try {
           await convex.mutation(api.memory.set, {
@@ -215,8 +226,8 @@ export function createTools(convex: ConvexHttpClient, agentId: string) {
   };
 }
 
-export function getEnabledTools(toolNames: string[], convex: ConvexHttpClient, agentId: string) {
-  const all = createTools(convex, agentId);
+export function getEnabledTools(toolNames: string[], convex: ConvexHttpClient, agentId: string, options?: ToolOptions) {
+  const all = createTools(convex, agentId, options);
   return Object.fromEntries(
     Object.entries(all).filter(([name]) => toolNames.includes(name)),
   );

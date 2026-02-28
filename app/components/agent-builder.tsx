@@ -14,7 +14,7 @@ const MODELS = [
   { id: "gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
 ];
 
-type WorkflowType = "standard" | "chain" | "parallel" | "orchestrator" | "evaluator" | "router";
+type WorkflowType = "standard" | "hitl" | "chain" | "parallel" | "orchestrator" | "evaluator" | "router";
 
 const WORKFLOW_TYPES: Array<{
   id: WorkflowType;
@@ -29,6 +29,19 @@ const WORKFLOW_TYPES: Array<{
     description: "Multi-step tool loop - the default agentic behavior",
     configPlaceholder: "",
     systemPromptHint: "The agent's main system prompt",
+  },
+  {
+    id: "hitl",
+    label: "Human-in-the-Loop",
+    description: "Tool execution pauses for explicit user approval before running",
+    configPlaceholder: JSON.stringify(
+      {
+        autoApproveTools: ["read_memory"],
+      },
+      null,
+      2,
+    ),
+    systemPromptHint: "Used for the agent response while tools require approval",
   },
   {
     id: "chain",
@@ -184,6 +197,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
   }, [existingAgent]);
 
   const selectedWorkflow = WORKFLOW_TYPES.find((w) => w.id === form.workflowType)!;
+  const isToolWorkflow = form.workflowType === "standard" || form.workflowType === "hitl";
 
   function handleConfigChange(value: string) {
     setForm((f) => ({ ...f, workflowConfig: value }));
@@ -385,7 +399,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
             </div>
           </Field>
 
-          {form.workflowType === "standard" && (
+          {isToolWorkflow && (
             <Field label="Tools">
               <div className="space-y-2">
                 {AVAILABLE_TOOLS.map((t) => (
@@ -413,7 +427,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
           )}
 
           <div className="grid grid-cols-2 gap-5">
-            {form.workflowType === "standard" && (
+            {isToolWorkflow && (
               <Field label="Max Steps">
                 <input
                   type="number"

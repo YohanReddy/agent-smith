@@ -4,6 +4,7 @@ import { v } from "convex/values";
 const workflowType = v.optional(
   v.union(
     v.literal("standard"),
+    v.literal("hitl"),
     v.literal("chain"),
     v.literal("parallel"),
     v.literal("orchestrator"),
@@ -52,6 +53,7 @@ export default defineSchema({
     totalTokens: v.optional(v.number()),
     durationMs: v.optional(v.number()),
     error: v.optional(v.string()),
+    hitlState: v.optional(v.string()), // JSON-stringified HITL state (messages + pending approvals)
   }).index("by_agent", ["agentId"]),
 
   steps: defineTable({

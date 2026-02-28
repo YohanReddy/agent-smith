@@ -17,6 +17,14 @@ type Agent = {
   workflowType?: string | null;
 };
 
+type HitlPendingApproval = {
+  id: string;
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
+  createdAt: number;
+};
+
 type Step = {
   _id: Id<"steps">;
   stepNumber: number;
@@ -54,6 +62,7 @@ const STEP_TYPE_COLORS: Record<string, string> = {
   evaluation: "border-yellow-800/70",
   generation: "border-[var(--muted)]",
   improvement: "border-cyan-800/70",
+  approval: "border-amber-800/70",
   chain: "border-[var(--muted)]",
   standard: "border-[var(--border)]",
 };
@@ -67,11 +76,33 @@ const STEP_TYPE_LABEL: Record<string, string> = {
   evaluation: "text-yellow-600",
   generation: "text-[var(--muted)]",
   improvement: "text-cyan-600",
+  approval: "text-amber-600",
   chain: "text-[var(--muted)]",
   standard: "text-[var(--muted)]",
 };
 
-const isStandardWorkflow = (wt?: string | null) => !wt || wt === "standard";
+const isLinearWorkflow = (wt?: string | null) => !wt || wt === "standard" || wt === "hitl";
+
+function parseHitlState(raw: string | null | undefined): { pendingApprovals: HitlPendingApproval[] } | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { pendingApprovals?: unknown };
+    if (!Array.isArray(parsed.pendingApprovals)) return null;
+    const pendingApprovals = parsed.pendingApprovals.filter((item): item is HitlPendingApproval => {
+      if (!item || typeof item !== "object") return false;
+      const value = item as Record<string, unknown>;
+      return (
+        typeof value.id === "string" &&
+        typeof value.toolCallId === "string" &&
+        typeof value.toolName === "string" &&
+        typeof value.createdAt === "number"
+      );
+    });
+    return { pendingApprovals };
+  } catch {
+    return null;
+  }
+}
 
 export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const [input, setInput] = useState("");
@@ -80,8 +111,9 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [canScrollToTop, setCanScrollToTop] = useState(false);
+  const [approvalInFlightId, setApprovalInFlightId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<"output" | "workflow">(
-    isStandardWorkflow(agent.workflowType) ? "output" : "workflow",
+    isLinearWorkflow(agent.workflowType) ? "output" : "workflow",
   );
   const bottomRef = useRef<HTMLDivElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -141,7 +173,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
 
   async function handleRun() {
     if (!input.trim() || isRunning) return;
-    if (!isStandardWorkflow(agent.workflowType)) setActiveView("workflow");
+    if (!isLinearWorkflow(agent.workflowType)) setActiveView("workflow");
     setIsRunning(true);
     setStreamedText("");
     setError(null);
@@ -197,13 +229,40 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const workflowLabel = useMemo(() => agent.workflowType ?? "standard", [agent.workflowType]);
   const toolSummary = useMemo(() => agent.tools.join(" · "), [agent.tools]);
   const runStatus = activeRun?.status;
+  const hitlState = useMemo(
+    () => parseHitlState((activeRun as (typeof activeRun & { hitlState?: string }) | undefined)?.hitlState),
+    [activeRun],
+  );
+  const pendingApprovals = hitlState?.pendingApprovals ?? [];
+  const isHitlWorkflow = agent.workflowType === "hitl";
   const isCompleted = runStatus === "completed";
   const isFailed = runStatus === "failed";
   const isWorkflowTerminal = runStatus === "completed" || runStatus === "failed" || runStatus === "stopped";
   const isEffectivelyRunning = isRunning && !(activeRun && isWorkflowTerminal);
   const isHistorical = !!activeRun && !isEffectivelyRunning && activeRun.status !== "running";
   const hasChatOpen = Boolean(activeRunId || (steps && steps.length > 0) || streamedText);
-  const shouldShowViewSwitcher = !isStandardWorkflow(agent.workflowType) && hasChatOpen;
+  const shouldShowViewSwitcher = !isLinearWorkflow(agent.workflowType) && hasChatOpen;
+
+  async function handleHitlApproval(approvalId: string, approved: boolean) {
+    if (!activeRunId || approvalInFlightId) return;
+    setApprovalInFlightId(approvalId);
+    setError(null);
+    try {
+      const res = await fetch("/api/run/hitl/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId: activeRunId, approvalId, approved }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setError(data.error ?? "Approval request failed");
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setApprovalInFlightId(null);
+    }
+  }
 
   function handleOutputScroll(e: React.UIEvent<HTMLDivElement>) {
     setCanScrollToTop(e.currentTarget.scrollTop > 120);
@@ -228,7 +287,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         >
           {workflowLabel}
         </span>
-        {isStandardWorkflow(agent.workflowType) && agent.tools.length > 0 && (
+        {isLinearWorkflow(agent.workflowType) && agent.tools.length > 0 && (
           <span className="text-[10px] text-[var(--muted)] font-mono ml-auto">{toolSummary}</span>
         )}
       </div>
@@ -285,7 +344,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         </div>
       )}
 
-      {!isStandardWorkflow(agent.workflowType) && activeView === "workflow" ? (
+      {!isLinearWorkflow(agent.workflowType) && activeView === "workflow" ? (
         <div className="flex-1 p-5">
           {steps && steps.length > 0 ? (
             <WorkflowGraph steps={steps as Step[]} status={runStatus} className="h-full min-h-[360px]" />
@@ -304,6 +363,38 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         {isHistorical && activeRun && (
           <div className="text-[10px] text-[var(--muted)] border-b border-[var(--border)] pb-2">
             viewing run · {new Date(activeRun._creationTime).toLocaleString()}
+          </div>
+        )}
+
+        {isHitlWorkflow && pendingApprovals.length > 0 && (
+          <div className="border border-amber-900/40 bg-amber-950/20 rounded p-3 space-y-2">
+            <div className="text-[10px] text-amber-600 uppercase tracking-widest font-mono">approval required</div>
+            {pendingApprovals.map((approval) => (
+              <div key={approval.id} className="border-l-2 border-amber-700/60 pl-3 py-1">
+                <div className="text-xs text-[var(--muted-strong)] mb-1">
+                  <span className="text-amber-600 font-mono">{approval.toolName}</span>{" "}
+                  <span className="text-[var(--muted)]">({parsePreview(JSON.stringify(approval.input ?? {}), 140)})</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleHitlApproval(approval.id, true)}
+                    disabled={!!approvalInFlightId}
+                    className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded border border-emerald-700/60 text-emerald-500 hover:bg-emerald-950/30 disabled:opacity-60"
+                  >
+                    approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleHitlApproval(approval.id, false)}
+                    disabled={!!approvalInFlightId}
+                    className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded border border-red-900/60 text-red-500 hover:bg-red-950/30 disabled:opacity-60"
+                  >
+                    deny
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -331,7 +422,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
               ⟳
             </span>
             <span>
-              {isStandardWorkflow(agent.workflowType) ? "thinking…" : `running ${workflowLabel} workflow…`}
+              {isLinearWorkflow(agent.workflowType) ? "thinking…" : `running ${workflowLabel} workflow…`}
             </span>
           </div>
         )}
@@ -373,7 +464,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
         <div className="flex items-center justify-between mt-2">
           <span className="text-[10px] text-[var(--muted)] font-mono">
             memory: {agent.memoryMode}
-            {isStandardWorkflow(agent.workflowType) && ` · max ${agent.maxSteps} steps`}
+            {isLinearWorkflow(agent.workflowType) && ` · max ${agent.maxSteps} steps`}
           </span>
           <button
             type="button"

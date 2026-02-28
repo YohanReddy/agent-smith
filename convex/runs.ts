@@ -41,6 +41,16 @@ export const create = mutation({
   },
 });
 
+export const setHitlState = mutation({
+  args: {
+    id: v.id("runs"),
+    hitlState: v.string(),
+  },
+  handler: async (ctx, { id, hitlState }) => {
+    await ctx.db.patch(id, { hitlState });
+  },
+});
+
 export const addStep = mutation({
   args: {
     runId: v.id("runs"),
@@ -76,7 +86,7 @@ export const complete = mutation({
     durationMs: v.number(),
   },
   handler: async (ctx, { id, ...rest }) => {
-    await ctx.db.patch(id, { status: "completed", ...rest });
+    await ctx.db.patch(id, { status: "completed", hitlState: undefined, ...rest });
   },
 });
 
@@ -99,6 +109,6 @@ export const fail = mutation({
     durationMs: v.number(),
   },
   handler: async (ctx, { id, ...rest }) => {
-    await ctx.db.patch(id, { status: "failed", ...rest });
+    await ctx.db.patch(id, { status: "failed", hitlState: undefined, ...rest });
   },
 });
