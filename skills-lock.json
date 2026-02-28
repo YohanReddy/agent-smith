@@ -26,6 +26,11 @@
       "sourceType": "github",
       "computedHash": "844401be868754beba2e7dc2c66abbe08b740eeefdec69c630ff6cbd81cc4c62"
     },
+    "react-flow": {
+      "source": "existential-birds/beagle",
+      "sourceType": "github",
+      "computedHash": "329b7d1430dd677f4d33224a201751d21236d26a677d16d58bd019c45d30a4eb"
+    },
     "streamdown": {
       "source": "vercel/streamdown",
       "sourceType": "github",
