@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AVAILABLE_TOOLS } from "@/tools/registry";
+import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/templates";
 import type { Id } from "@/convex/_generated/dataModel";
 import { hasCommandModifier } from "@/lib/keyboard";
 
@@ -176,6 +177,8 @@ export function AgentBuilder({ editId, onClose }: Props) {
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [appliedTemplate, setAppliedTemplate] = useState<AgentTemplate | null>(null);
 
   const existingAgent = useQuery(api.agents.get, editId ? { id: editId } : "skip");
   const create = useMutation(api.agents.create);
@@ -253,6 +256,21 @@ export function AgentBuilder({ editId, onClose }: Props) {
     }));
   }
 
+  function applyTemplate(template: AgentTemplate) {
+    setAppliedTemplate(template);
+    setForm({
+      name: template.name,
+      description: template.description,
+      systemPrompt: template.systemPrompt,
+      model: template.model,
+      tools: template.tools,
+      memoryMode: template.memoryMode,
+      maxSteps: template.maxSteps,
+      workflowType: template.workflowType,
+      workflowConfig: template.workflowConfig ?? "",
+    });
+  }
+
   function handleNameChange(name: string) {
     setForm((f) => ({
       ...f,
@@ -290,9 +308,9 @@ export function AgentBuilder({ editId, onClose }: Props) {
       <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
 
       <div className="w-[480px] bg-[var(--panel)] border-l border-[var(--border)] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)] shrink-0">
+<div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)] shrink-0">
           <h2 className="text-[11px] font-medium text-[var(--muted)] uppercase tracking-widest font-mono">
-            {editId ? "Edit Agent" : "New Agent"}
+            {editId ? "Edit Agent" : appliedTemplate ? "Customize Template" : "New Agent"}
           </h2>
           <button
             type="button"
@@ -303,6 +321,72 @@ export function AgentBuilder({ editId, onClose }: Props) {
             ×
           </button>
         </div>
+
+        {!editId && (
+          <div className="px-5 py-3 border-b border-[var(--border)]">
+            {appliedTemplate ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{appliedTemplate.icon}</span>
+                  <div>
+                    <div className="text-xs font-medium text-[var(--foreground)]">{appliedTemplate.name}</div>
+                    <div className="text-[10px] text-[var(--muted)]">Template applied</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppliedTemplate(null);
+                    setForm(defaultForm);
+                  }}
+                  className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : showTemplates ? (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-[var(--muted)] uppercase tracking-widest font-mono">Templates</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates(false)}
+                    className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]"
+                  >
+                    hide
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {AGENT_TEMPLATES.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => {
+                        applyTemplate(template);
+                        setShowTemplates(false);
+                      }}
+                      className="flex items-start gap-2 p-2 rounded border border-[var(--border)] hover:border-[var(--muted)] hover:bg-[var(--panel)] transition-colors text-left"
+                    >
+                      <span className="text-base">{template.icon}</span>
+                      <div>
+                        <div className="text-xs font-medium text-[var(--foreground)]">{template.name}</div>
+                        <div className="text-[10px] text-[var(--muted)] line-clamp-1">{template.description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowTemplates(true)}
+                className="text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                + Browse templates
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           <Field label="Name">

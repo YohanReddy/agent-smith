@@ -81,8 +81,8 @@ The installed `ai` package is v6 which has breaking changes from earlier version
 - **Tool definition**: use `inputSchema` (not `parameters`), add `outputSchema` to enable execute, execute receives `(input, options)` — do not destructure in the signature
 - **Tool call fields**: `.input` (not `.args`), tool result `.output` (not `.result`)
 
-## Phase 1 Scope (MVP)
+## Phase 2+ Upcoming
 
 Define agents → run them → see live step-by-step output → store run history → summary memory → 4 built-in tools → DevTools integration.
 
-**Out of scope for Phase 1:** multi-user auth, subagents, custom tool authoring in-browser, mobile UI.
+**Upcoming features:** agent templates, multi-user auth, subagents, custom tool authoring in-browser, mobile UI.
