@@ -1,20 +1,24 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AgentList } from "./components/agent-list";
 import { AgentBuilder } from "./components/agent-builder";
-import { RunConsole } from "./components/run-console";
+import { RunConsole, type RunConsoleHandle } from "./components/run-console";
 import { RunHistory } from "./components/run-history";
 import { ThemeToggle } from "./components/theme-toggle";
+import { hasCommandModifier, isEditableTarget } from "@/lib/keyboard";
 
 export default function Home() {
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [builderState, setBuilderState] = useState<"new" | Id<"agents"> | null>(null);
   const [activeRunId, setActiveRunId] = useState<Id<"runs"> | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const runConsoleRef = useRef<RunConsoleHandle>(null);
 
+  const agents = useQuery(api.agents.list);
   const selectedAgent = useQuery(api.agents.get, selectedAgentId ? { id: selectedAgentId } : "skip");
   const selectedAgentRuns = useQuery(api.runs.list, selectedAgentId ? { agentId: selectedAgentId } : "skip");
 
@@ -22,7 +26,93 @@ export default function Home() {
     setSelectedAgentId(id);
     setActiveRunId(null);
   }
+
   const displayedRunId = activeRunId ?? selectedAgentRuns?.[0]?._id ?? null;
+  const modKey = useMemo(() => {
+    if (typeof navigator === "undefined") return "Ctrl";
+    return navigator.platform.toLowerCase().includes("mac") ? "Cmd" : "Ctrl";
+  }, []);
+
+  useEffect(() => {
+    function moveAgent(delta: 1 | -1) {
+      if (!agents || agents.length === 0) return;
+      const currentIndex = selectedAgentId ? agents.findIndex((agent) => agent._id === selectedAgentId) : -1;
+      const safeIndex = currentIndex >= 0 ? currentIndex : delta === 1 ? -1 : 0;
+      const nextIndex = (safeIndex + delta + agents.length) % agents.length;
+      selectAgent(agents[nextIndex]._id);
+    }
+
+    function moveRun(delta: 1 | -1) {
+      if (!selectedAgentRuns || selectedAgentRuns.length === 0) return;
+      const currentId = displayedRunId ?? selectedAgentRuns[0]._id;
+      const currentIndex = selectedAgentRuns.findIndex((run) => run._id === currentId);
+      const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextIndex = (safeIndex + delta + selectedAgentRuns.length) % selectedAgentRuns.length;
+      setActiveRunId(selectedAgentRuns[nextIndex]._id);
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      const editable = isEditableTarget(event.target);
+
+      if (key === "escape") {
+        if (builderState !== null) {
+          event.preventDefault();
+          setBuilderState(null);
+          return;
+        }
+        setShowShortcuts(false);
+      }
+
+      if (hasCommandModifier(event) && event.altKey && key === "n") {
+        event.preventDefault();
+        setBuilderState("new");
+        return;
+      }
+
+      if (hasCommandModifier(event) && key === "k") {
+        event.preventDefault();
+        runConsoleRef.current?.focusPrompt();
+        return;
+      }
+
+      if (hasCommandModifier(event) && key === "enter") {
+        event.preventDefault();
+        runConsoleRef.current?.run();
+        return;
+      }
+
+      if (event.code === "Slash" && hasCommandModifier(event) && !event.altKey && !editable) {
+        event.preventDefault();
+        setShowShortcuts((current) => !current);
+        return;
+      }
+
+      if (editable || event.altKey || hasCommandModifier(event)) return;
+
+      if (key === "j") {
+        event.preventDefault();
+        if (event.shiftKey) moveRun(1);
+        else moveAgent(1);
+        return;
+      }
+
+      if (key === "k") {
+        event.preventDefault();
+        if (event.shiftKey) moveRun(-1);
+        else moveAgent(-1);
+        return;
+      }
+
+      if (key === "v") {
+        event.preventDefault();
+        runConsoleRef.current?.toggleView();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [agents, builderState, displayedRunId, selectedAgentId, selectedAgentRuns]);
 
   return (
     <div className="h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col overflow-hidden select-none">
@@ -37,8 +127,18 @@ export default function Home() {
           <ThemeToggle />
           <button
             type="button"
+            aria-label="Show keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+            onClick={() => setShowShortcuts(true)}
+            className="text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted)] px-2.5 py-1 rounded transition-colors font-mono"
+          >
+            ? shortcuts
+          </button>
+          <button
+            type="button"
             aria-label="Create new agent"
             onClick={() => setBuilderState("new")}
+            title={`Create new agent (${modKey}+Alt+N)`}
             className="text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted)] px-2.5 py-1 rounded transition-colors font-mono"
           >
             + new agent
@@ -60,7 +160,12 @@ export default function Home() {
           {selectedAgent ? (
             <>
               <div className="flex-1 overflow-hidden">
-                <RunConsole agent={selectedAgent} activeRunId={displayedRunId} onRunStarted={setActiveRunId} />
+                <RunConsole
+                  ref={runConsoleRef}
+                  agent={selectedAgent}
+                  activeRunId={displayedRunId}
+                  onRunStarted={setActiveRunId}
+                />
               </div>
               <RunHistory
                 agentId={selectedAgent._id}
@@ -83,6 +188,48 @@ export default function Home() {
       {builderState !== null && (
         <AgentBuilder editId={builderState === "new" ? null : builderState} onClose={() => setBuilderState(null)} />
       )}
+
+      {showShortcuts && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close keyboard shortcuts"
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            onClick={() => setShowShortcuts(false)}
+          />
+          <div className="relative w-full max-w-lg border border-[var(--border)] bg-[var(--panel)] rounded-lg p-4 shadow-xl">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs uppercase tracking-widest text-[var(--muted)] font-mono">Keyboard Shortcuts</h2>
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(false)}
+                className="text-[var(--muted)] hover:text-[var(--foreground)] text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-1.5 text-[11px] font-mono">
+              <ShortcutRow keyHint={`${modKey}+Alt+N`} action="new agent" />
+              <ShortcutRow keyHint={`${modKey}+K`} action="focus prompt box" />
+              <ShortcutRow keyHint={`${modKey}+Enter`} action="run prompt" />
+              <ShortcutRow keyHint="J / K" action="next / previous agent" />
+              <ShortcutRow keyHint="Shift+J / Shift+K" action="next / previous run" />
+              <ShortcutRow keyHint="V" action="toggle workflow/output view" />
+              <ShortcutRow keyHint={`${modKey}+/`} action="toggle this help" />
+              <ShortcutRow keyHint="Esc" action="close dialogs/help" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShortcutRow({ keyHint, action }: { keyHint: string; action: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border border-[var(--border)] rounded px-2.5 py-2">
+      <span className="text-[var(--foreground)]">{action}</span>
+      <span className="text-[var(--muted)]">{keyHint}</span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -43,6 +43,12 @@ interface Props {
   agent: Agent;
   activeRunId: Id<"runs"> | null;
   onRunStarted: (runId: Id<"runs">) => void;
+}
+
+export interface RunConsoleHandle {
+  focusPrompt: () => void;
+  run: () => void;
+  toggleView: () => void;
 }
 
 function fmtMs(ms: number) {
@@ -104,7 +110,10 @@ function parseHitlState(raw: string | null | undefined): { pendingApprovals: Hit
   }
 }
 
-export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
+export const RunConsole = forwardRef<RunConsoleHandle, Props>(function RunConsole(
+  { agent, activeRunId, onRunStarted }: Props,
+  ref,
+) {
   const [input, setInput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [streamedText, setStreamedText] = useState("");
@@ -117,6 +126,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   );
   const bottomRef = useRef<HTMLDivElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const steps = useQuery(api.runs.listSteps, activeRunId ? { runId: activeRunId } : "skip");
   const activeRun = useQuery(api.runs.get, activeRunId ? { id: activeRunId } : "skip");
@@ -171,7 +181,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
     document.getElementById(`step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  async function handleRun() {
+  const handleRun = useCallback(async () => {
     if (!input.trim() || isRunning) return;
     if (!isLinearWorkflow(agent.workflowType)) setActiveView("workflow");
     setIsRunning(true);
@@ -220,7 +230,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
       setError(String(e));
       setIsRunning(false);
     }
-  }
+  }, [agent._id, agent.workflowType, input, isRunning, onRunStarted]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleRun();
@@ -242,6 +252,24 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
   const isHistorical = !!activeRun && !isEffectivelyRunning && activeRun.status !== "running";
   const hasChatOpen = Boolean(activeRunId || (steps && steps.length > 0) || streamedText);
   const shouldShowViewSwitcher = !isLinearWorkflow(agent.workflowType) && hasChatOpen;
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusPrompt: () => {
+        inputRef.current?.focus();
+      },
+      run: () => {
+        void handleRun();
+      },
+      toggleView: () => {
+        if (shouldShowViewSwitcher) {
+          setActiveView((view) => (view === "workflow" ? "output" : "workflow"));
+        }
+      },
+    }),
+    [handleRun, shouldShowViewSwitcher],
+  );
 
   async function handleHitlApproval(approvalId: string, approved: boolean) {
     if (!activeRunId || approvalInFlightId) return;
@@ -453,6 +481,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
 
       <div className="border-t border-[var(--border)] px-5 py-4 shrink-0">
         <textarea
+          ref={inputRef}
           className="w-full bg-[var(--panel-soft)] border border-[var(--border)] focus-visible:border-[var(--muted)] focus-visible:ring-2 focus-visible:ring-[var(--muted)]/40 rounded text-sm text-[var(--foreground)] placeholder-[var(--muted)] px-3 py-2.5 resize-none transition-colors font-sans leading-relaxed"
           rows={3}
           placeholder="Enter a prompt… (Ctrl/Cmd+Enter to run)"
@@ -470,6 +499,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
             type="button"
             onClick={handleRun}
             disabled={!input.trim() || isEffectivelyRunning}
+            title="Run prompt (Ctrl/Cmd+Enter)"
             className="px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-[var(--panel-soft)] disabled:text-[var(--muted)] text-white rounded transition-colors"
           >
             {isEffectivelyRunning ? (
@@ -487,7 +517,7 @@ export function RunConsole({ agent, activeRunId, onRunStarted }: Props) {
       </div>
     </div>
   );
-}
+});
 
 type ToolPreview = { toolName: string; argPreview: string; resultPreview: string };
 

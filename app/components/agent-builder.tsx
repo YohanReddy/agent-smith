@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AVAILABLE_TOOLS } from "@/tools/registry";
 import type { Id } from "@/convex/_generated/dataModel";
+import { hasCommandModifier } from "@/lib/keyboard";
 
 const MODELS = [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic" },
@@ -268,6 +269,22 @@ export function AgentBuilder({ editId, onClose }: Props) {
     }));
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (hasCommandModifier(event) && event.key.toLowerCase() === "enter") {
+        event.preventDefault();
+        void handleSave();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [configError, editId, form, onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
@@ -472,6 +489,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
             type="button"
             onClick={handleSave}
             disabled={!form.name.trim() || saving || !!configError}
+            title="Save agent (Ctrl/Cmd+Enter)"
             className="w-full py-2.5 text-xs font-medium uppercase tracking-widest bg-emerald-700 hover:bg-emerald-600 disabled:bg-[var(--panel-soft)] disabled:text-[var(--muted)] text-white rounded transition-colors"
           >
             {saving ? "saving…" : editId ? "save changes" : "create agent"}
