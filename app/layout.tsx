@@ -20,6 +20,25 @@ export const metadata: Metadata = {
     template: "%s | Agent Smith",
   },
   description: "AI agent workbench",
+  openGraph: {
+    title: "Agent Smith",
+    description: "AI agent workbench",
+    type: "website",
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "Agent Smith",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Agent Smith",
+    description: "AI agent workbench",
+    images: ["/api/og"],
+  },
 };
 
 export default function RootLayout({
