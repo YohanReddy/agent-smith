@@ -49,6 +49,12 @@ const WORKFLOW_LABELS: Record<string, string> = {
 const STEP_X_GAP = 260;
 const WORKER_Y_GAP = 160;
 
+// Approximate rendered heights — used to vertically center workflow nodes
+// with the agent node rather than aligning by top edge
+const AGENT_NODE_HEIGHT = 156;
+const STEP_NODE_HEIGHT = 88;
+const CLASSIFIER_NODE_HEIGHT = 72;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // NODE DATA TYPES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,25 +143,34 @@ function defaultAgentData(): AgentNodeData {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function workflowNodes(type: string, agentX: number, agentY: number): any[] {
   const offsetX = agentX + 340;
+  // Vertical center of the agent node — workflow nodes are centered relative to this
+  const cY = agentY + AGENT_NODE_HEIGHT / 2;
+
   if (type === "chain") {
+    const y = cY - STEP_NODE_HEIGHT / 2;
     return [
-      { id: `step-${uid()}`, type: "cbStepNode", position: { x: offsetX, y: agentY - WORKER_Y_GAP / 2 }, data: { kind: "step", label: "Step 1", systemPrompt: "", deletable: true } },
-      { id: `step-${uid()}`, type: "cbStepNode", position: { x: offsetX + STEP_X_GAP, y: agentY - WORKER_Y_GAP / 2 }, data: { kind: "step", label: "Step 2", systemPrompt: "", deletable: true } },
+      { id: `step-${uid()}`, type: "cbStepNode", position: { x: offsetX, y }, data: { kind: "step", label: "Step 1", systemPrompt: "", deletable: true } },
+      { id: `step-${uid()}`, type: "cbStepNode", position: { x: offsetX + STEP_X_GAP, y }, data: { kind: "step", label: "Step 2", systemPrompt: "", deletable: true } },
     ];
   }
   if (type === "parallel") {
-    const wY = agentY - WORKER_Y_GAP;
+    const workerAY = cY - WORKER_Y_GAP / 2 - STEP_NODE_HEIGHT / 2;
+    const workerBY = cY + WORKER_Y_GAP / 2 - STEP_NODE_HEIGHT / 2;
+    const synthY = cY - STEP_NODE_HEIGHT / 2;
     return [
-      { id: `worker-${uid()}`, type: "cbStepNode", position: { x: offsetX, y: wY }, data: { kind: "worker", label: "Worker A", systemPrompt: "", deletable: true } },
-      { id: `worker-${uid()}`, type: "cbStepNode", position: { x: offsetX, y: wY + WORKER_Y_GAP }, data: { kind: "worker", label: "Worker B", systemPrompt: "", deletable: true } },
-      { id: "synthesize", type: "cbSynthNode", position: { x: offsetX + STEP_X_GAP, y: agentY - WORKER_Y_GAP / 2 }, data: { kind: "synthesize", label: "Synthesize", systemPrompt: "", deletable: false }, draggable: false },
+      { id: `worker-${uid()}`, type: "cbStepNode", position: { x: offsetX, y: workerAY }, data: { kind: "worker", label: "Worker A", systemPrompt: "", deletable: true } },
+      { id: `worker-${uid()}`, type: "cbStepNode", position: { x: offsetX, y: workerBY }, data: { kind: "worker", label: "Worker B", systemPrompt: "", deletable: true } },
+      { id: "synthesize", type: "cbSynthNode", position: { x: offsetX + STEP_X_GAP, y: synthY }, data: { kind: "synthesize", label: "Synthesize", systemPrompt: "", deletable: false }, draggable: false },
     ];
   }
   if (type === "router") {
+    const classifierY = cY - CLASSIFIER_NODE_HEIGHT / 2;
+    const routeAY = cY - WORKER_Y_GAP / 2 - STEP_NODE_HEIGHT / 2;
+    const routeBY = cY + WORKER_Y_GAP / 2 - STEP_NODE_HEIGHT / 2;
     return [
-      { id: "classifier", type: "cbClassifierNode", position: { x: offsetX, y: agentY - WORKER_Y_GAP / 2 }, data: { kind: "classifier", label: "Classify", systemPrompt: "", deletable: false }, draggable: false },
-      { id: `route-${uid()}`, type: "cbRouteNode", position: { x: offsetX + STEP_X_GAP, y: agentY - WORKER_Y_GAP }, data: { kind: "route", label: "route-a", systemPrompt: "", routeType: "route-a", routeDescription: "", deletable: true } },
-      { id: `route-${uid()}`, type: "cbRouteNode", position: { x: offsetX + STEP_X_GAP, y: agentY }, data: { kind: "route", label: "route-b", systemPrompt: "", routeType: "route-b", routeDescription: "", deletable: true } },
+      { id: "classifier", type: "cbClassifierNode", position: { x: offsetX, y: classifierY }, data: { kind: "classifier", label: "Classify", systemPrompt: "", deletable: false }, draggable: false },
+      { id: `route-${uid()}`, type: "cbRouteNode", position: { x: offsetX + STEP_X_GAP, y: routeAY }, data: { kind: "route", label: "route-a", systemPrompt: "", routeType: "route-a", routeDescription: "", deletable: true } },
+      { id: `route-${uid()}`, type: "cbRouteNode", position: { x: offsetX + STEP_X_GAP, y: routeBY }, data: { kind: "route", label: "route-b", systemPrompt: "", routeType: "route-b", routeDescription: "", deletable: true } },
     ];
   }
   return [];
@@ -845,9 +860,14 @@ function CanvasBuilderInner({
 
   // Change workflow type on agent node — reset workflow nodes
   function handleWorkflowTypeChange(type: string) {
-    updateNode(AGENT_NODE_ID, { workflowType: type } as Partial<AgentNodeData>);
     const agPos = nodes.find((n) => n.id === AGENT_NODE_ID)?.position ?? { x: 80, y: 160 };
-    const agentOnlyNodes = nodes.filter((n) => n.data.kind === "agent");
+    const agentOnlyNodes = nodes
+      .filter((n) => n.data.kind === "agent")
+      .map((n) =>
+        n.id === AGENT_NODE_ID
+          ? ({ ...n, data: { ...n.data, workflowType: type } } as CBNode)
+          : n,
+      );
     const freshWfNodes = workflowNodes(type, agPos.x, agPos.y);
     const next = ([...agentOnlyNodes, ...freshWfNodes] as unknown) as CBNode[];
     setNodes(next);
