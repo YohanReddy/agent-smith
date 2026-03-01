@@ -68,6 +68,16 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
+::selection {
+  background: var(--accent);
+  color: var(--background);
+}
+
+select:focus,
+select:active {
+  outline-color: var(--accent);
+}
+
 .input {
   background: var(--panel-soft);
   border: 1px solid var(--border);
