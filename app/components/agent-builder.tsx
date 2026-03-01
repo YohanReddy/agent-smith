@@ -7,6 +7,7 @@ import { AVAILABLE_TOOLS } from "@/tools/registry";
 import { AGENT_TEMPLATES, type AgentTemplate } from "@/lib/templates";
 import type { Id } from "@/convex/_generated/dataModel";
 import { hasCommandModifier } from "@/lib/keyboard";
+import { WorkflowCanvas } from "./workflow-canvas";
 
 const MODELS = [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic" },
@@ -179,6 +180,7 @@ export function AgentBuilder({ editId, onClose }: Props) {
   const [configError, setConfigError] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [appliedTemplate, setAppliedTemplate] = useState<AgentTemplate | null>(null);
+  const [showWorkflowCanvas, setShowWorkflowCanvas] = useState(false);
 
   const existingAgent = useQuery(api.agents.get, editId ? { id: editId } : "skip");
   const create = useMutation(api.agents.create);
@@ -202,20 +204,6 @@ export function AgentBuilder({ editId, onClose }: Props) {
 
   const selectedWorkflow = WORKFLOW_TYPES.find((w) => w.id === form.workflowType)!;
   const isToolWorkflow = form.workflowType === "standard" || form.workflowType === "hitl";
-
-  function handleConfigChange(value: string) {
-    setForm((f) => ({ ...f, workflowConfig: value }));
-    if (!value.trim()) {
-      setConfigError(null);
-      return;
-    }
-    try {
-      JSON.parse(value);
-      setConfigError(null);
-    } catch {
-      setConfigError("Invalid JSON");
-    }
-  }
 
   function handleWorkflowChange(wt: WorkflowType) {
     const wf = WORKFLOW_TYPES.find((w) => w.id === wt)!;
@@ -454,22 +442,12 @@ export function AgentBuilder({ editId, onClose }: Props) {
           </Field>
 
           {form.workflowType !== "standard" && (
-            <Field label="Workflow Config" hint={configError ?? "JSON"}>
-              <textarea
-                className={`input w-full h-48 resize-none font-mono text-[11px] leading-relaxed ${
-                  configError ? "border-red-800" : ""
-                }`}
-                placeholder={selectedWorkflow.configPlaceholder}
-                value={form.workflowConfig}
-                onChange={(e) => handleConfigChange(e.target.value)}
+            <Field label="Workflow Config">
+              <WorkflowConfigPreview
+                workflowType={form.workflowType as WorkflowType}
+                workflowConfig={form.workflowConfig}
+                onOpen={() => setShowWorkflowCanvas(true)}
               />
-              <button
-                type="button"
-                onClick={() => handleConfigChange(selectedWorkflow.configPlaceholder)}
-                className="mt-1 text-[10px] text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                insert default config
-              </button>
             </Field>
           )}
 
@@ -580,6 +558,19 @@ export function AgentBuilder({ editId, onClose }: Props) {
           </button>
         </div>
       </div>
+
+      {showWorkflowCanvas && (
+        <WorkflowCanvas
+          workflowType={form.workflowType as WorkflowType}
+          workflowConfig={form.workflowConfig}
+          onSave={(config) => {
+            setForm((f) => ({ ...f, workflowConfig: config }));
+            setConfigError(null);
+            setShowWorkflowCanvas(false);
+          }}
+          onClose={() => setShowWorkflowCanvas(false)}
+        />
+      )}
     </div>
   );
 }
@@ -600,6 +591,52 @@ function Field({
         {hint && <span className="text-[10px] text-[var(--muted-soft)] font-mono">{hint}</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+function WorkflowConfigPreview({
+  workflowType,
+  workflowConfig,
+  onOpen,
+}: {
+  workflowType: WorkflowType;
+  workflowConfig: string;
+  onOpen: () => void;
+}) {
+  const isCanvas = workflowType === "chain" || workflowType === "parallel" || workflowType === "router";
+
+  const summary = (() => {
+    if (!workflowConfig.trim()) return null;
+    try {
+      const c = JSON.parse(workflowConfig);
+      if (workflowType === "chain" && c.steps) return `${c.steps.length} step${c.steps.length !== 1 ? "s" : ""}`;
+      if (workflowType === "parallel" && c.workers) return `${c.workers.length} worker${c.workers.length !== 1 ? "s" : ""} + synthesize`;
+      if (workflowType === "router" && c.routes) return `${c.routes.length} route${c.routes.length !== 1 ? "s" : ""}`;
+      if (workflowType === "evaluator") return `${c.maxIterations ?? "?"} iterations, score ≥ ${c.passingScore ?? "?"}`;
+      if (workflowType === "orchestrator") return c.workerSystemPrompt ? "worker prompt set" : null;
+      if (workflowType === "hitl") return `${(c.autoApproveTools as string[] | undefined)?.length ?? 0} auto-approved`;
+    } catch {
+      return "invalid JSON";
+    }
+    return null;
+  })();
+
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 rounded border border-[var(--border)] bg-[var(--panel-muted)]">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${workflowConfig.trim() ? "bg-emerald-500" : "bg-[var(--muted-soft)]"}`} />
+        <span className="text-[11px] text-[var(--muted)] truncate font-mono">
+          {summary ?? (isCanvas ? "no nodes configured" : "using defaults")}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="shrink-0 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors whitespace-nowrap"
+      >
+        {isCanvas ? "Open visual builder →" : "Open config →"}
+      </button>
     </div>
   );
 }
