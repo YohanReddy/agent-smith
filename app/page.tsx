@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AgentList } from "./components/agent-list";
 import { AgentBuilder } from "./components/agent-builder";
+import { CanvasBuilder } from "./components/canvas-builder";
 import { RunConsole, type RunConsoleHandle } from "./components/run-console";
 import { RunHistory } from "./components/run-history";
 import { ThemeToggle } from "./components/theme-toggle";
@@ -14,6 +15,7 @@ import { hasCommandModifier, isEditableTarget } from "@/lib/keyboard";
 export default function Home() {
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [builderState, setBuilderState] = useState<"new" | Id<"agents"> | null>(null);
+  const [showCanvas, setShowCanvas] = useState(false);
   const [activeRunId, setActiveRunId] = useState<Id<"runs"> | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const runConsoleRef = useRef<RunConsoleHandle>(null);
@@ -136,6 +138,14 @@ export default function Home() {
           </button>
           <button
             type="button"
+            aria-label="Build agent on canvas"
+            onClick={() => setShowCanvas(true)}
+            className="text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted)] px-2.5 py-1 rounded transition-colors font-mono"
+          >
+            ⊞ canvas
+          </button>
+          <button
+            type="button"
             aria-label="Create new agent"
             onClick={() => setBuilderState("new")}
             title={`Create new agent (${modKey}+Alt+N)`}
@@ -176,9 +186,25 @@ export default function Home() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center space-y-1.5">
+              <div className="text-center space-y-4">
                 <div className="text-[var(--muted)] font-mono text-xs">select an agent from the sidebar</div>
-                <div className="text-[var(--muted-soft)] font-mono text-[10px]">or create one with + new agent</div>
+                <div className="flex items-center gap-3 justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setBuilderState("new")}
+                    className="text-[11px] font-mono text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted)] px-3 py-1.5 rounded transition-colors"
+                  >
+                    + new agent
+                  </button>
+                  <span className="text-[var(--muted-soft)] text-[10px] font-mono">or</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowCanvas(true)}
+                    className="text-[11px] font-mono text-emerald-500 hover:text-emerald-400 border border-emerald-900/50 hover:border-emerald-700 bg-emerald-950/20 px-3 py-1.5 rounded transition-colors"
+                  >
+                    ⊞ build on canvas
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -187,6 +213,16 @@ export default function Home() {
 
       {builderState !== null && (
         <AgentBuilder editId={builderState === "new" ? null : builderState} onClose={() => setBuilderState(null)} />
+      )}
+
+      {showCanvas && (
+        <CanvasBuilder
+          onSave={(agentId) => {
+            setShowCanvas(false);
+            selectAgent(agentId);
+          }}
+          onClose={() => setShowCanvas(false)}
+        />
       )}
 
       {showShortcuts && (
