@@ -29,7 +29,10 @@ export default defineSchema({
   agents: defineTable({
     ...agentCore,
     latestVersion: v.number(),
-  }).index("by_name", ["name"]),
+    userId: v.optional(v.string()),
+  })
+    .index("by_name", ["name"])
+    .index("by_user", ["userId"]),
 
   agentVersions: defineTable({
     agentId: v.id("agents"),

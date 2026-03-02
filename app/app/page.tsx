@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AgentList } from "../components/agent-list";
@@ -13,6 +14,15 @@ import { ThemeToggle } from "../components/theme-toggle";
 import { hasCommandModifier, isEditableTarget } from "@/lib/keyboard";
 
 export default function Home() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [builderState, setBuilderState] = useState<"new" | Id<"agents"> | null>(null);
   const [showCanvas, setShowCanvas] = useState(false);
@@ -115,6 +125,14 @@ export default function Home() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [agents, builderState, displayedRunId, selectedAgentId, selectedAgentRuns]);
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="h-screen bg-[var(--background)] flex items-center justify-center">
+        <span className="font-mono text-xs text-[var(--muted)] animate-pulse">loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col overflow-hidden select-none">

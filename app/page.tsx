@@ -1,9 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useConvexAuth } from "convex/react";
+import { authClient } from "@/lib/auth-client";
 import { ThemeToggle } from "./components/theme-toggle";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
+  const [loading, setLoading] = useState(false);
+
+  async function handleEnterWorkspace() {
+    setLoading(true);
+    if (!isAuthenticated) {
+      await authClient.signIn.anonymous();
+    }
+    router.push("/app");
+  }
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] overflow-hidden relative">
       {/* Background grid */}
@@ -20,9 +35,13 @@ export default function LandingPage() {
           <span className="font-mono text-sm tracking-tight">agent-smith</span>
         </div>
         <nav className="flex items-center gap-6">
-          <Link href="/app" className="font-mono text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
+          <button
+            type="button"
+            onClick={handleEnterWorkspace}
+            className="font-mono text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+          >
             enter app
-          </Link>
+          </button>
           <ThemeToggle />
         </nav>
       </header>
@@ -48,13 +67,15 @@ export default function LandingPage() {
 
           {/* CTA */}
           <div className="animate-[fadeInUp_0.8s_ease-out_0.3s_forwards] opacity-0 translate-y-8">
-            <Link
-              href="/app"
-              className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-500 text-black font-mono text-sm font-medium rounded hover:bg-emerald-400 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(34,197,94,0.3)]"
+            <button
+              type="button"
+              onClick={handleEnterWorkspace}
+              disabled={loading}
+              className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-500 text-black font-mono text-sm font-medium rounded hover:bg-emerald-400 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] disabled:opacity-60 disabled:cursor-wait disabled:hover:scale-100"
             >
-              <span>enter workspace</span>
+              <span>{loading ? "starting..." : "enter workspace"}</span>
               <span className="text-xs opacity-70">→</span>
-            </Link>
+            </button>
           </div>
         </div>
 

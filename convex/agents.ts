@@ -27,7 +27,12 @@ const agentFields = {
 
 export const list = query({
   handler: async (ctx) => {
-    return await ctx.db.query("agents").collect();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    return await ctx.db
+      .query("agents")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
   },
 });
 
@@ -41,7 +46,13 @@ export const get = query({
 export const create = mutation({
   args: agentFields,
   handler: async (ctx, args) => {
-    const agentId = await ctx.db.insert("agents", { ...args, latestVersion: 1 });
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const agentId = await ctx.db.insert("agents", {
+      ...args,
+      latestVersion: 1,
+      userId: identity.subject,
+    });
     await ctx.db.insert("agentVersions", { agentId, version: 1, ...args });
     return agentId;
   },
@@ -50,8 +61,11 @@ export const create = mutation({
 export const update = mutation({
   args: { id: v.id("agents"), ...agentFields },
   handler: async (ctx, { id, ...rest }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const agent = await ctx.db.get(id);
     if (!agent) throw new Error("Agent not found");
+    if (!agent.userId || agent.userId !== identity.subject) throw new Error("Unauthorized");
     const newVersion = agent.latestVersion + 1;
     await ctx.db.patch(id, { ...rest, latestVersion: newVersion });
     await ctx.db.insert("agentVersions", { agentId: id, version: newVersion, ...rest });
@@ -61,6 +75,12 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("agents") },
   handler: async (ctx, { id }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const agent = await ctx.db.get(id);
+    if (!agent) throw new Error("Agent not found");
+    if (!agent.userId || agent.userId !== identity.subject) throw new Error("Unauthorized");
+
     const runs = await ctx.db
       .query("runs")
       .withIndex("by_agent", (q) => q.eq("agentId", id))
