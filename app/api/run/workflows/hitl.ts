@@ -2,7 +2,7 @@ import { generateText, stepCountIs, type ModelMessage, type StepResult, type Too
 import { ConvexHttpClient } from "convex/browser";
 import { z } from "zod";
 import { getEnabledTools } from "@/tools";
-import type { AgentDoc } from "./types";
+import type { AgentDoc, ApiKeys } from "./types";
 import { getModel } from "./types";
 
 const hitlConfigSchema = z.object({
@@ -157,11 +157,13 @@ export async function runHitlTurn({
   messages,
   convex,
   agentId,
+  apiKeys,
 }: {
   agent: AgentDoc;
   messages: ModelMessage[];
   convex: ConvexHttpClient;
   agentId: string;
+  apiKeys?: ApiKeys;
 }): Promise<HitlTurnResult> {
   const config = parseHitlConfig(agent.workflowConfig);
   const autoApproveSet = new Set(config.autoApproveTools);
@@ -170,7 +172,7 @@ export async function runHitlTurn({
   const hasTools = Object.keys(tools).length > 0;
 
   const result = await generateText({
-    model: getModel(agent.model),
+    model: getModel(agent.model, apiKeys),
     system:
       `${agent.systemPrompt}\n\n` +
       "When a tool execution is not approved by the user, do not retry it. " +

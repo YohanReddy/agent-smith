@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { runId, approvalId, approved, reason } = parsedBody.data;
+  const apiKeys = {
+    anthropic: req.headers.get("X-Anthropic-Api-Key") ?? undefined,
+    openai: req.headers.get("X-OpenAI-Api-Key") ?? undefined,
+  };
   const typedRunId = runId as Id<"runs">;
   const startedAt = Date.now();
 
@@ -63,6 +67,7 @@ export async function POST(req: NextRequest) {
       messages: nextMessages,
       convex,
       agentId: String(run.agentId),
+      apiKeys,
     });
 
     const existingSteps = await convex.query(api.runs.listSteps, { runId: typedRunId });

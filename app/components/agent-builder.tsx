@@ -10,11 +10,8 @@ import { hasCommandModifier } from "@/lib/keyboard";
 import { WorkflowCanvas } from "./workflow-canvas";
 
 const MODELS = [
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic" },
   { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", provider: "Anthropic" },
-  { id: "claude-opus-4-6", label: "Claude Opus 4.6", provider: "Anthropic" },
-  { id: "gpt-4o", label: "GPT-4o", provider: "OpenAI" },
-  { id: "gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
+  { id: "gpt-4.1-mini", label: "GPT-4.1 mini", provider: "OpenAI" },
 ];
 
 type WorkflowType = "standard" | "hitl" | "chain" | "parallel" | "orchestrator" | "evaluator" | "router";
@@ -145,7 +142,7 @@ const defaultForm = {
   name: "",
   description: "",
   systemPrompt: "You are a helpful assistant.",
-  model: "claude-sonnet-4-6",
+  model: "claude-haiku-4-5-20251001",
   tools: [] as string[],
   memoryMode: "none" as "none" | "summary" | "full",
   maxSteps: 10,

@@ -11,6 +11,7 @@ import { CanvasBuilder } from "../components/canvas-builder";
 import { RunConsole, type RunConsoleHandle } from "../components/run-console";
 import { RunHistory } from "../components/run-history";
 import { ThemeToggle } from "../components/theme-toggle";
+import { ApiKeysPanel } from "../components/api-keys-panel";
 import { hasCommandModifier, isEditableTarget } from "@/lib/keyboard";
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
   const [showCanvas, setShowCanvas] = useState(false);
   const [activeRunId, setActiveRunId] = useState<Id<"runs"> | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
   const runConsoleRef = useRef<RunConsoleHandle>(null);
 
   const agents = useQuery(api.agents.list);
@@ -147,6 +149,14 @@ export default function Home() {
           <ThemeToggle />
           <button
             type="button"
+            aria-label="Configure API keys"
+            onClick={() => setShowApiKeys(true)}
+            className="text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted)] px-2.5 py-1 rounded transition-colors font-mono"
+          >
+            ⌗ api keys
+          </button>
+          <button
+            type="button"
             aria-label="Show keyboard shortcuts"
             title="Keyboard shortcuts (?)"
             onClick={() => setShowShortcuts(true)}
@@ -242,6 +252,8 @@ export default function Home() {
           onClose={() => setShowCanvas(false)}
         />
       )}
+
+      {showApiKeys && <ApiKeysPanel onClose={() => setShowApiKeys(false)} />}
 
       {showShortcuts && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-4">

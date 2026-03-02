@@ -41,7 +41,7 @@ export async function runParallel(ctx: WorkflowContext): Promise<WorkflowResult>
   const synthesizerPrompt =
     config.synthesize ??
     "You are a synthesizer. Combine the following expert analyses into a coherent summary.";
-  const model = getModel(agent.model);
+  const model = getModel(agent.model, ctx.apiKeys);
   const groupId = `parallel-${Date.now()}`;
 
   let totalTokens = 0;

@@ -29,11 +29,8 @@ import { AVAILABLE_TOOLS } from "@/tools/registry";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MODELS = [
-  { id: "claude-sonnet-4-6", label: "Sonnet 4.6", provider: "Anthropic" },
   { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", provider: "Anthropic" },
-  { id: "claude-opus-4-6", label: "Opus 4.6", provider: "Anthropic" },
-  { id: "gpt-4o", label: "GPT-4o", provider: "OpenAI" },
-  { id: "gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
+  { id: "gpt-4.1-mini", label: "GPT-4.1 mini", provider: "OpenAI" },
 ];
 
 const WORKFLOW_LABELS: Record<string, string> = {
@@ -128,7 +125,7 @@ function defaultAgentData(): AgentNodeData {
     name: "",
     description: "",
     systemPrompt: "You are a helpful assistant.",
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     memoryMode: "none",
     tools: [],
     maxSteps: 10,

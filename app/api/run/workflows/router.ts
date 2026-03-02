@@ -39,7 +39,7 @@ export async function runRouter(ctx: WorkflowContext): Promise<WorkflowResult> {
     routes: DEFAULT_ROUTES,
   });
   const routes = config.routes?.length ? config.routes : DEFAULT_ROUTES;
-  const model = getModel(agent.model);
+  const model = getModel(agent.model, ctx.apiKeys);
 
   let totalTokens = 0;
 

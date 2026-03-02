@@ -35,7 +35,7 @@ export async function runOrchestrator(ctx: WorkflowContext): Promise<WorkflowRes
   const workerSystemPrompt =
     config.workerSystemPrompt ??
     "You are a skilled specialist. Execute the assigned task and provide a thorough, focused response.";
-  const model = getModel(agent.model);
+  const model = getModel(agent.model, ctx.apiKeys);
 
   let totalTokens = 0;
 

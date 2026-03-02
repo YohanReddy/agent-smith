@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Streamdown } from "streamdown";
 import { WorkflowGraph } from "@/app/components/workflow-graph";
+import { getStoredApiKeys } from "./api-keys-panel";
 
 type Agent = {
   _id: Id<"agents">;
@@ -189,9 +190,14 @@ export const RunConsole = forwardRef<RunConsoleHandle, Props>(function RunConsol
     setError(null);
 
     try {
+      const { anthropic: anthropicKey, openai: openaiKey } = getStoredApiKeys();
       const res = await fetch("/api/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(anthropicKey ? { "X-Anthropic-Api-Key": anthropicKey } : {}),
+          ...(openaiKey ? { "X-OpenAI-Api-Key": openaiKey } : {}),
+        },
         body: JSON.stringify({ agentId: agent._id, input }),
       });
 
@@ -276,9 +282,14 @@ export const RunConsole = forwardRef<RunConsoleHandle, Props>(function RunConsol
     setApprovalInFlightId(approvalId);
     setError(null);
     try {
+      const { anthropic: anthropicKey, openai: openaiKey } = getStoredApiKeys();
       const res = await fetch("/api/run/hitl/approve", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(anthropicKey ? { "X-Anthropic-Api-Key": anthropicKey } : {}),
+          ...(openaiKey ? { "X-OpenAI-Api-Key": openaiKey } : {}),
+        },
         body: JSON.stringify({ runId: activeRunId, approvalId, approved }),
       });
       if (!res.ok) {

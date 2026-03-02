@@ -41,7 +41,7 @@ export async function runEvaluator(ctx: WorkflowContext): Promise<WorkflowResult
   const evaluatorSystemPrompt =
     config.evaluatorSystemPrompt ??
     "You are a rigorous quality evaluator. Score responses critically and identify specific, actionable improvements.";
-  const model = getModel(agent.model);
+  const model = getModel(agent.model, ctx.apiKeys);
 
   let totalTokens = 0;
   let stepNum = 0;

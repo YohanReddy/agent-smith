@@ -37,7 +37,7 @@ export async function runChain(ctx: WorkflowContext): Promise<WorkflowResult> {
     steps: DEFAULT_STEPS,
   });
   const steps = config.steps?.length ? config.steps : DEFAULT_STEPS;
-  const model = getModel(agent.model);
+  const model = getModel(agent.model, ctx.apiKeys);
 
   let currentContent = input;
   let totalTokens = 0;

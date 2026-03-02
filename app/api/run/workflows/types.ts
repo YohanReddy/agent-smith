@@ -1,5 +1,5 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
+import { openai, createOpenAI } from "@ai-sdk/openai";
 import { ConvexHttpClient } from "convex/browser";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
@@ -18,12 +18,18 @@ export type AgentDoc = {
   latestVersion: number;
 };
 
+export interface ApiKeys {
+  anthropic?: string;
+  openai?: string;
+}
+
 export interface WorkflowContext {
   agent: AgentDoc;
   input: string;
   runId: Id<"runs">;
   convex: ConvexHttpClient;
   startedAt: number;
+  apiKeys?: ApiKeys;
 }
 
 export interface WorkflowResult {
@@ -31,14 +37,18 @@ export interface WorkflowResult {
   totalTokens: number;
 }
 
-export function getModel(modelId: string) {
-  if (modelId.startsWith("claude-")) return anthropic(modelId);
+export function getModel(modelId: string, apiKeys?: ApiKeys) {
+  if (modelId.startsWith("claude-")) {
+    const provider = apiKeys?.anthropic ? createAnthropic({ apiKey: apiKeys.anthropic }) : anthropic;
+    return provider(modelId);
+  }
   if (
     modelId.startsWith("gpt-") ||
     modelId.startsWith("o1") ||
     modelId.startsWith("o3")
   ) {
-    return openai(modelId);
+    const provider = apiKeys?.openai ? createOpenAI({ apiKey: apiKeys.openai }) : openai;
+    return provider(modelId);
   }
   throw new Error(`Unknown model: ${modelId}`);
 }

@@ -27,6 +27,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { agentId, input } = parsedBody.data;
+  const apiKeys = {
+    anthropic: req.headers.get("X-Anthropic-Api-Key") ?? undefined,
+    openai: req.headers.get("X-OpenAI-Api-Key") ?? undefined,
+  };
   const startedAt = Date.now();
   let runId: Id<"runs"> | null = null;
 
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
       agent.memoryMode === "full" && memoryDoc?.content
         ? `Conversation history:\n${renderFullMemoryForPrompt(memoryDoc.content)}\n\nCurrent input:\n${input}`
         : input;
-    const ctx = { agent: agentWithResolvedPrompt, input: workflowInput, runId, convex, startedAt };
+    const ctx = { agent: agentWithResolvedPrompt, input: workflowInput, runId, convex, startedAt, apiKeys };
     const history = agent.memoryMode === "full" ? parseFullMemory(memoryDoc?.content) : [];
 
     if (workflowType === "hitl") {
@@ -79,6 +83,7 @@ export async function POST(req: NextRequest) {
           messages: initialMessages,
           convex,
           agentId,
+          apiKeys,
         });
 
         for (let i = 0; i < turn.steps.length; i++) {
@@ -177,7 +182,7 @@ export async function POST(req: NextRequest) {
     ];
 
     const result = streamText({
-      model: getModel(agent.model),
+      model: getModel(agent.model, apiKeys),
       system: systemPrompt,
       messages,
       ...(hasTools ? { tools: enabledTools } : {}),
